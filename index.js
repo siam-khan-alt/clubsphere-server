@@ -37,6 +37,8 @@ const verifyToken = async (req, res, next) => {
       return res.status(401).send({ message: 'Unauthorized Access!', err })
     }
 }
+
+
 const uri = `${process.env.MONGODB_URI}`
 const client = new MongoClient(uri, {
   serverApi: {
@@ -53,8 +55,15 @@ async function run() {
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
 
-    app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
+    const verifyAdmin = async (req, res, next) => {
+    const email = req.tokenEmail; 
+    const user = await usersCollection.findOne({ email });
+
+    if (!user || user.role !== 'admin') {
+        return res.status(403).send({ message: 'Forbidden access: Not an Admin.' });
+    }
+    next();
+};
 
     app.post('/users/register', async (req, res) => {
         try {
@@ -80,11 +89,10 @@ async function run() {
             res.status(500).json({ message: 'Failed to register user in DB', error: error.message });
         }
     });
-
-    app.get('/users/role', verifyToken, async (req, res) => {
+   
+    app.get('/users/role', verifyToken,  async (req, res) => {
         try {
             const email = req.tokenEmail; 
-            
             const user = await usersCollection.findOne({ email }, { projection: { role: 1 } }); 
 
             if (!user) {
@@ -98,12 +106,25 @@ async function run() {
             res.status(500).json({ message: 'Failed to fetch user role', error: error.message });
         }
     });
+     app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
+    try {
+       const users = await usersCollection.find().toArray();
+       res.send(users);
+        
+    } catch (error) {
+        console.error('Fetch all users error:', error);
+        res.status(500).send({ message: 'Failed to fetch users from database.' });
+    }
+});
+   
     app.get('/', (req, res) => {
     res.send('Hello World!')
     })
 
     
-   })
+    app.listen(port, () => {
+  console.log(`Example app listening on port ${port}`) })
+  
     
   } finally {
     // Ensures that the client will close when you finish/error
