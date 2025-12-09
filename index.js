@@ -48,6 +48,7 @@ async function run() {
     await client.connect();
     const database = client.db("ClubSphereDB");
     const usersCollection = database.collection("users");
+    const clubsCollection = database.collection("clubs"); 
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
@@ -61,6 +62,17 @@ async function run() {
         return res
           .status(403)
           .send({ message: "Forbidden access: Not an Admin." });
+      }
+      next();
+    };
+  const verifyManager = async (req, res, next) => {
+      const email = req.tokenEmail;
+      const user = await usersCollection.findOne({ email });
+
+      if (!user || user.role !== "clubManager") {
+        return res
+          .status(403)
+          .send({ message: "Forbidden access: Not an club manager." });
       }
       next();
     };
@@ -210,6 +222,57 @@ async function run() {
                 res.status(500).send({ message: 'Failed to delete user. Check console for details.' });
             }
         });
+
+    app.post('/clubs', verifyToken, verifyManager, async (req, res) => {
+    const { 
+        name, 
+        description, 
+        category, 
+        location,
+        bannerImage,
+        membershipFee,
+        meetingSchedule 
+    } = req.body;
+    
+    const managerEmail = req.tokenEmail; 
+
+    if (!name || !description || !category || !location || membershipFee === undefined) {
+        return res.status(400).send({ message: 'Please provide all required club information (Name, Description, Category, Location, Fee).' });
+    }
+
+    if (typeof membershipFee !== 'number' || membershipFee < 0) {
+        return res.status(400).send({ message: 'Membership Fee must be a non-negative number.' });
+    }
+
+    try {
+        const newClub = {
+            clubName: name,
+            description: description,
+            category: category,
+            location: location,
+            bannerImage: bannerImage || null,
+            membershipFee: membershipFee,
+            meetingSchedule: meetingSchedule || 'TBD',
+            managerEmail: managerEmail, 
+            status: 'pending',
+            members: [managerEmail],
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        };
+
+        const result = await clubsCollection.insertOne(newClub);
+
+        res.status(201).json({ 
+            message: 'Club creation request submitted successfully! Awaiting Admin approval.', 
+            clubId: result.insertedId,
+            club: newClub 
+        });
+
+    } catch (error) {
+        console.error('Club creation error:', error);
+        res.status(500).send({ message: 'Failed to submit club request due to server error.' });
+    }
+});    
     app.get("/", (req, res) => {
       res.send("Hello World!");
     });
