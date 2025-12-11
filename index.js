@@ -1,7 +1,9 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const admin = require("firebase-admin");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const app = express();
 const port = process.env.PORT || 5000;
 app.use(
@@ -12,7 +14,6 @@ app.use(
   })
 );
 app.use(express.json());
-require("dotenv").config();
 const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
   "utf-8"
 );
@@ -78,6 +79,17 @@ async function run() {
         return res
           .status(403)
           .send({ message: "Forbidden access: Not an club manager." });
+      }
+      next();
+    };
+    const verifyMember = async (req, res, next) => {
+      const email = req.tokenEmail;
+      const user = await usersCollection.findOne({ email });
+
+      if (!user || user.role !== "member") {
+        return res
+          .status(403)
+          .send({ message: "Forbidden access: Not an club mamber." });
       }
       next();
     };
@@ -439,11 +451,9 @@ async function run() {
         );
 
         if (result.matchedCount === 0) {
-          return res
-            .status(404)
-            .send({
-              message: "Club not found or you are not authorized to manage it.",
-            });
+          return res.status(404).send({
+            message: "Club not found or you are not authorized to manage it.",
+          });
         }
 
         res.send({ message: "Club details updated successfully." });
@@ -463,11 +473,9 @@ async function run() {
         });
 
         if (result.deletedCount === 0) {
-          return res
-            .status(404)
-            .send({
-              message: "Club not found or you are not authorized to delete it.",
-            });
+          return res.status(404).send({
+            message: "Club not found or you are not authorized to delete it.",
+          });
         }
 
         res.send({ message: "Club deleted successfully." });
@@ -570,12 +578,10 @@ async function run() {
           );
 
           if (!club) {
-            return res
-              .status(403)
-              .send({
-                message:
-                  "Forbidden: You do not manage this club or club not found.",
-              });
+            return res.status(403).send({
+              message:
+                "Forbidden: You do not manage this club or club not found.",
+            });
           }
 
           const members = await membershipsCollection
@@ -625,12 +631,10 @@ async function run() {
           });
 
           if (!club) {
-            return res
-              .status(403)
-              .send({
-                message:
-                  "Forbidden: You are not authorized to modify this membership.",
-              });
+            return res.status(403).send({
+              message:
+                "Forbidden: You are not authorized to modify this membership.",
+            });
           }
 
           const updateResult = await membershipsCollection.updateOne(
@@ -696,12 +700,9 @@ async function run() {
           });
 
           if (!club) {
-            return res
-              .status(403)
-              .send({
-                message:
-                  "Forbidden: You do not manage the club for this event.",
-              });
+            return res.status(403).send({
+              message: "Forbidden: You do not manage the club for this event.",
+            });
           }
 
           const registrations = await eventRegistrationsCollection
@@ -749,12 +750,10 @@ async function run() {
             status: "approved",
           });
           if (!club) {
-            return res
-              .status(403)
-              .send({
-                message:
-                  "Forbidden: Club not found, not approved, or you do not manage it.",
-              });
+            return res.status(403).send({
+              message:
+                "Forbidden: Club not found, not approved, or you do not manage it.",
+            });
           }
 
           const fee = isPaid === true ? parseFloat(eventFee) : 0;
@@ -782,12 +781,10 @@ async function run() {
             { $inc: { eventsCount: 1 } }
           );
 
-          res
-            .status(201)
-            .send({
-              message: "Event created successfully.",
-              eventId: result.insertedId,
-            });
+          res.status(201).send({
+            message: "Event created successfully.",
+            eventId: result.insertedId,
+          });
         } catch (error) {
           console.error("Event creation error:", error);
           res
@@ -819,12 +816,9 @@ async function run() {
             managerEmail: managerEmail,
           });
           if (!club) {
-            return res
-              .status(403)
-              .send({
-                message:
-                  "Forbidden: You do not manage the club for this event.",
-              });
+            return res.status(403).send({
+              message: "Forbidden: You do not manage the club for this event.",
+            });
           }
 
           const updateDoc = {
@@ -879,12 +873,9 @@ async function run() {
             managerEmail: managerEmail,
           });
           if (!club) {
-            return res
-              .status(403)
-              .send({
-                message:
-                  "Forbidden: You do not manage the club for this event.",
-              });
+            return res.status(403).send({
+              message: "Forbidden: You do not manage the club for this event.",
+            });
           }
 
           await eventRegistrationsCollection.deleteMany({ eventId: eventId });
@@ -912,7 +903,7 @@ async function run() {
         let sortOption = {};
 
         if (search) {
-          query.clubName = { $regex: search, $options: "i" }; 
+          query.clubName = { $regex: search, $options: "i" };
         }
 
         if (category && category !== "all") {
@@ -934,7 +925,7 @@ async function run() {
               sortOption.createdAt = 1;
               break;
             default:
-              sortOption.createdAt = -1; 
+              sortOption.createdAt = -1;
           }
         } else {
           sortOption.createdAt = -1;
@@ -955,28 +946,249 @@ async function run() {
     });
 
     app.get("/clubs/:id", async (req, res) => {
-            const clubId = req.params.id;
+      const clubId = req.params.id;
 
-            if (!ObjectId.isValid(clubId)) {
-                return res.status(400).send({ message: "Invalid Club ID format." });
-            }
+      if (!ObjectId.isValid(clubId)) {
+        return res.status(400).send({ message: "Invalid Club ID format." });
+      }
 
-            try {
-                const club = await clubsCollection.findOne({
-                    _id: new ObjectId(clubId),
-                    status: "approved",
-                });
-
-                if (!club) {
-                    return res.status(404).send({ message: "Club not found or not approved yet." });
-                }
-
-                res.send(club);
-
-            } catch (error) {
-                res.status(500).send({ message: "Failed to fetch club details due to server error." });
-            }
+      try {
+        const club = await clubsCollection.findOne({
+          _id: new ObjectId(clubId),
+          status: "approved",
         });
+
+        if (!club) {
+          return res
+            .status(404)
+            .send({ message: "Club not found or not approved yet." });
+        }
+
+        res.send(club);
+      } catch (error) {
+        res.status(500).send({
+          message: "Failed to fetch club details due to server error.",
+        });
+      }
+    });
+    app.post(
+      "/payment/create-checkout-session",
+      verifyToken,
+      verifyMember,
+      async (req, res) => {
+        const { membershipFee, clubId, userEmail } = req.body;
+        const callingEmail = req.tokenEmail;
+
+        if (callingEmail !== userEmail) {
+          return res
+            .status(403)
+            .send({ message: "Emails do not match. Unauthorized." });
+        }
+
+        if (!membershipFee || !clubId) {
+          return res.status(400).send({ message: "Missing fee or club ID." });
+        }
+
+        try {
+          const club = await clubsCollection.findOne({
+            _id: new ObjectId(clubId),
+          });
+          if (!club || club.status !== "approved") {
+            return res
+              .status(404)
+              .send({ message: "Club not found or not approved." });
+          }
+          const existingMembership = await membershipsCollection.findOne({
+            clubId: clubId,
+            userEmail: userEmail,
+            status: "active",
+          });
+
+          if (existingMembership) {
+            return res
+              .status(400)
+              .send({
+                message: "You are already an active member of this club.",
+              });
+          }
+
+          const session = await stripe.checkout.sessions.create({
+            payment_method_types: ["card"],
+            line_items: [
+              {
+                price_data: {
+                  currency: "usd",
+                  product_data: {
+                    name: `${club.clubName} Membership`,
+                    description: `1-month membership for the ${club.clubName}.`,
+                  },
+                  unit_amount: Math.round(membershipFee * 100),
+                },
+                quantity: 1,
+              },
+            ],
+            mode: "payment",
+            metadata: {
+              clubId: clubId,
+              userEmail: userEmail,
+              amount: membershipFee.toString(),
+              type: "membership",
+            },
+            success_url: `http://localhost:5173/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `http://localhost:5173/clubs/${clubId}`,
+          });
+
+          res.send({ url: session.url });
+        } catch (error) {
+          console.error("Stripe Checkout Session Error:", error);
+          res
+            .status(500)
+            .send({ message: "Failed to create payment session." });
+        }
+      }
+    );
+
+    app.get("/payment/success", async (req, res) => {
+      const { session_id } = req.query;
+
+      if (!session_id) {
+        return res.status(400).send({ message: "Missing session ID." });
+      }
+
+      try {
+        const session = await stripe.checkout.sessions.retrieve(session_id);
+
+        if (session.payment_status !== "paid") {
+          return res
+            .status(400)
+            .send({ message: "Payment was not successful or is pending." });
+        }
+
+        const { clubId, userEmail, amount, type } = session.metadata;
+
+        const existingMembership = await membershipsCollection.findOne({
+          clubId: clubId,
+          userEmail: userEmail,
+          status: "active",
+        });
+
+        if (existingMembership) {
+          return res.send({ message: "Membership already active.", clubId });
+        }
+        const newMembership = {
+          userEmail: userEmail,
+          clubId: clubId,
+          status: "active",
+          paymentId: session.id,
+          joinedAt: new Date(),
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        };
+        await membershipsCollection.insertOne(newMembership);
+        const paymentRecord = {
+          userEmail: userEmail,
+          amount: parseFloat(amount),
+          type: type,
+          clubId: clubId,
+          stripePaymentIntentId: session.payment_intent,
+          transactionId: session.id,
+          paymentStatus: "paid",
+          createdAt: new Date(),
+        };
+        await paymentsCollection.insertOne(paymentRecord);
+
+        await clubsCollection.updateOne(
+          { _id: new ObjectId(clubId), members: { $nin: [userEmail] } },
+          { $addToSet: { members: userEmail } }
+        );
+
+        res.send({
+          message: "Membership and Payment successful.",
+          clubId,
+          session,
+        });
+      } catch (error) {
+        console.error("Payment Success Verification Error:", error);
+        res
+          .status(500)
+          .send({ message: "Failed to verify payment or create membership." });
+      }
+    });
+
+    app.post("/clubs/join/:id", verifyToken, verifyMember, async (req, res) => {
+      const clubId = req.params.id;
+      const userEmail = req.tokenEmail;
+      const { paymentStatus } = req.body;
+
+      if (!ObjectId.isValid(clubId)) {
+        return res.status(400).send({ message: "Invalid Club ID." });
+      }
+
+      try {
+        const club = await clubsCollection.findOne({
+          _id: new ObjectId(clubId),
+          status: "approved",
+        });
+        if (!club) {
+          return res
+            .status(404)
+            .send({ message: "Club not found or not approved." });
+        }
+        if (club.membershipFee > 0) {
+          return res
+            .status(400)
+            .send({
+              message:
+                "This club requires a paid membership. Please use the payment flow.",
+            });
+        }
+
+        const existingMembership = await membershipsCollection.findOne({
+          clubId: clubId,
+          userEmail: userEmail,
+          status: "active",
+        });
+
+        if (existingMembership) {
+          return res
+            .status(400)
+            .send({
+              message: "You are already an active member of this club.",
+            });
+        }
+
+        const newMembership = {
+          userEmail: userEmail,
+          clubId: clubId,
+          status: "active",
+          paymentId: "FREE_JOIN",
+          joinedAt: new Date(),
+          expiresAt: null,
+        };
+        await membershipsCollection.insertOne(newMembership);
+
+        const updateResult = await clubsCollection.updateOne(
+          { _id: new ObjectId(clubId), status: "approved" },
+          { $addToSet: { members: userEmail } }
+        );
+
+        if (updateResult.modifiedCount === 0) {
+          console.warn(
+            `Club ${clubId} members array was likely already updated for ${userEmail}.`
+          );
+        }
+
+        res
+          .status(201)
+          .send({ message: "Successfully joined the club (Free Membership)." });
+      } catch (error) {
+        console.error("Club joining failed (Free):", error);
+        res
+          .status(500)
+          .send({
+            message: "Failed to process free join request due to server error.",
+          });
+      }
+    });
 
     app.get("/", (req, res) => {
       res.send("Hello World!");
