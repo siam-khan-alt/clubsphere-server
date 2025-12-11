@@ -954,6 +954,30 @@ async function run() {
       }
     });
 
+    app.get("/clubs/:id", async (req, res) => {
+            const clubId = req.params.id;
+
+            if (!ObjectId.isValid(clubId)) {
+                return res.status(400).send({ message: "Invalid Club ID format." });
+            }
+
+            try {
+                const club = await clubsCollection.findOne({
+                    _id: new ObjectId(clubId),
+                    status: "approved",
+                });
+
+                if (!club) {
+                    return res.status(404).send({ message: "Club not found or not approved yet." });
+                }
+
+                res.send(club);
+
+            } catch (error) {
+                res.status(500).send({ message: "Failed to fetch club details due to server error." });
+            }
+        });
+
     app.get("/", (req, res) => {
       res.send("Hello World!");
     });
