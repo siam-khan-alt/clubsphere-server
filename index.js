@@ -905,6 +905,55 @@ async function run() {
       }
     );
 
+    app.get("/clubs", async (req, res) => {
+      try {
+        const { search, category, sort } = req.query;
+        let query = { status: "approved" };
+        let sortOption = {};
+
+        if (search) {
+          query.clubName = { $regex: search, $options: "i" }; 
+        }
+
+        if (category && category !== "all") {
+          query.category = category;
+        }
+
+        if (sort) {
+          switch (sort) {
+            case "fee_asc":
+              sortOption.membershipFee = 1;
+              break;
+            case "fee_desc":
+              sortOption.membershipFee = -1;
+              break;
+            case "newest":
+              sortOption.createdAt = -1;
+              break;
+            case "oldest":
+              sortOption.createdAt = 1;
+              break;
+            default:
+              sortOption.createdAt = -1; 
+          }
+        } else {
+          sortOption.createdAt = -1;
+        }
+
+        const clubs = await clubsCollection
+          .find(query)
+          .sort(sortOption)
+          .toArray();
+
+        res.send(clubs);
+      } catch (error) {
+        console.error("Public club listing error:", error);
+        res
+          .status(500)
+          .send({ message: "Failed to fetch clubs due to server error." });
+      }
+    });
+
     app.get("/", (req, res) => {
       res.send("Hello World!");
     });
