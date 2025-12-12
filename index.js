@@ -8,7 +8,11 @@ const app = express();
 const port = process.env.PORT || 5000;
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:5174"],
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "https://clubsphere-client.vercel.app",
+    ],
     credentials: true,
     optionSuccessStatus: 200,
   })
@@ -730,14 +734,21 @@ async function run() {
           title,
           description,
           eventDate,
-          eventTime,
           location,
           isPaid,
           eventFee,
           maxAttendees,
+          bannerImage,
         } = req.body;
 
-        if (!clubId || !title || !description || !eventDate || !location) {
+        if (
+          !clubId ||
+          !title ||
+          !description ||
+          !eventDate ||
+          !location ||
+          !bannerImage
+        ) {
           return res
             .status(400)
             .send({ message: "Please provide all required event details." });
@@ -764,7 +775,7 @@ async function run() {
             title: title,
             description: description,
             eventDate: new Date(eventDate),
-            eventTime: eventTime,
+            bannerImage: bannerImage,
             location: location,
             isPaid: isPaid,
             eventFee: fee,
@@ -801,7 +812,17 @@ async function run() {
       async (req, res) => {
         const eventId = req.params.id;
         const managerEmail = req.tokenEmail;
-        const updateData = req.body;
+        const {
+          eventDate,
+          eventTime,
+          isPaid,
+          eventFee,
+          maxAttendees,
+          title,
+          description,
+          location,
+          bannerImage,
+        } = req.body;
 
         try {
           const event = await eventsCollection.findOne({
@@ -823,16 +844,14 @@ async function run() {
 
           const updateDoc = {
             $set: {
-              title: updateData.title,
-              description: updateData.description,
-              eventDate: new Date(updateData.eventDate),
-              eventTime: updateData.eventTime,
-              location: updateData.location,
-              isPaid: updateData.isPaid,
-              eventFee: parseFloat(updateData.eventFee) || 0,
-              maxAttendees: updateData.maxAttendees
-                ? parseInt(updateData.maxAttendees)
-                : null,
+              title: title,
+              description: description,
+              eventDate: new Date(eventDate),
+              location: location,
+              bannerImage: bannerImage,
+              isPaid: isPaid,
+              eventFee: parseFloat(eventFee) || 0,
+              maxAttendees: maxAttendees ? parseInt(maxAttendees) : null,
               updatedAt: new Date(),
             },
           };
@@ -1005,11 +1024,9 @@ async function run() {
           });
 
           if (existingMembership) {
-            return res
-              .status(400)
-              .send({
-                message: "You are already an active member of this club.",
-              });
+            return res.status(400).send({
+              message: "You are already an active member of this club.",
+            });
           }
 
           const session = await stripe.checkout.sessions.create({
@@ -1034,8 +1051,8 @@ async function run() {
               amount: membershipFee.toString(),
               type: "membership",
             },
-            success_url: `http://localhost:5173/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `http://localhost:5173/clubs/${clubId}`,
+            success_url: `${process.env.CLIENT_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${process.env.CLIENT_URL}/clubs/${clubId}`,
           });
 
           res.send({ url: session.url });
@@ -1064,48 +1081,85 @@ async function run() {
             .send({ message: "Payment was not successful or is pending." });
         }
 
-        const { clubId, userEmail, amount, type } = session.metadata;
-
-        const existingMembership = await membershipsCollection.findOne({
-          clubId: clubId,
-          userEmail: userEmail,
-          status: "active",
-        });
-
-        if (existingMembership) {
-          return res.send({ message: "Membership already active.", clubId });
-        }
-        const newMembership = {
-          userEmail: userEmail,
-          clubId: clubId,
-          status: "active",
-          paymentId: session.id,
-          joinedAt: new Date(),
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        };
-        await membershipsCollection.insertOne(newMembership);
+        const { clubId, userEmail, amount, type, eventId } = session.metadata;
         const paymentRecord = {
           userEmail: userEmail,
           amount: parseFloat(amount),
           type: type,
-          clubId: clubId,
           stripePaymentIntentId: session.payment_intent,
           transactionId: session.id,
           paymentStatus: "paid",
           createdAt: new Date(),
         };
-        await paymentsCollection.insertOne(paymentRecord);
+        if (type === "membership") {
+          const existingMembership = await membershipsCollection.findOne({
+            clubId: clubId,
+            userEmail: userEmail,
+            status: "active",
+          });
 
-        await clubsCollection.updateOne(
-          { _id: new ObjectId(clubId), members: { $nin: [userEmail] } },
-          { $addToSet: { members: userEmail } }
-        );
+          if (existingMembership) {
+            return res.send({ message: "Membership already active.", clubId });
+          }
+          const newMembership = {
+            userEmail: userEmail,
+            clubId: clubId,
+            status: "active",
+            paymentId: session.id,
+            joinedAt: new Date(),
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          };
+          await membershipsCollection.insertOne(newMembership);
+          paymentRecord.clubId = clubId;
+          await paymentsCollection.insertOne(paymentRecord);
 
-        res.send({
-          message: "Membership and Payment successful.",
-          clubId,
-          session,
-        });
+          await clubsCollection.updateOne(
+            { _id: new ObjectId(clubId), members: { $nin: [userEmail] } },
+            { $addToSet: { members: userEmail } }
+          );
+
+          res.send({
+            message: "Membership and Payment successful.",
+            clubId,
+            session,
+          });
+        } else if (type === "event") {
+          const existingRegistration =
+            await eventRegistrationsCollection.findOne({
+              eventId: eventId,
+              userEmail: userEmail,
+              status: "registered",
+            });
+          if (existingRegistration) {
+            return res.send({
+              message: "Already registered for event.",
+              eventId,
+            });
+          }
+
+          const newRegistration = {
+            userEmail: userEmail,
+            eventId: eventId,
+            clubId: clubId,
+            status: "registered",
+            paymentId: session.id,
+            registeredAt: new Date(),
+          };
+          await eventRegistrationsCollection.insertOne(newRegistration);
+          paymentRecord.clubId = clubId;
+          paymentRecord.eventId = eventId;
+          await paymentsCollection.insertOne(paymentRecord);
+
+          return res.send({
+            message: "Event Registration and Payment successful.",
+            eventId,
+            session,
+          });
+        } else {
+          return res
+            .status(400)
+            .send({ message: "Invalid payment type in metadata." });
+        }
       } catch (error) {
         console.error("Payment Success Verification Error:", error);
         res
@@ -1134,12 +1188,10 @@ async function run() {
             .send({ message: "Club not found or not approved." });
         }
         if (club.membershipFee > 0) {
-          return res
-            .status(400)
-            .send({
-              message:
-                "This club requires a paid membership. Please use the payment flow.",
-            });
+          return res.status(400).send({
+            message:
+              "This club requires a paid membership. Please use the payment flow.",
+          });
         }
 
         const existingMembership = await membershipsCollection.findOne({
@@ -1149,11 +1201,9 @@ async function run() {
         });
 
         if (existingMembership) {
-          return res
-            .status(400)
-            .send({
-              message: "You are already an active member of this club.",
-            });
+          return res.status(400).send({
+            message: "You are already an active member of this club.",
+          });
         }
 
         const newMembership = {
@@ -1182,13 +1232,234 @@ async function run() {
           .send({ message: "Successfully joined the club (Free Membership)." });
       } catch (error) {
         console.error("Club joining failed (Free):", error);
-        res
-          .status(500)
-          .send({
-            message: "Failed to process free join request due to server error.",
-          });
+        res.status(500).send({
+          message: "Failed to process free join request due to server error.",
+        });
       }
     });
+
+    app.get("/events", async (req, res) => {
+      const { search, sort, order } = req.query;
+      let query = {};
+      let sortOptions = {};
+
+      if (search) {
+        query.title = { $regex: search, $options: "i" };
+      }
+
+      if (sort) {
+        sortOptions[sort] = order === "asc" ? 1 : -1;
+      } else {
+        sortOptions.eventDate = -1;
+      }
+
+      try {
+        const eventsList = await eventsCollection
+          .find(query)
+          .sort(sortOptions)
+          .toArray();
+
+        const clubIds = eventsList.map((event) => new ObjectId(event.clubId));
+
+        const clubs = await clubsCollection
+          .find(
+            { _id: { $in: clubIds } },
+            { projection: { clubName: 1, _id: 1, category: 1 } }
+          )
+          .toArray();
+
+        const clubMap = clubs.reduce((acc, club) => {
+          acc[club._id.toString()] = club;
+          return acc;
+        }, {});
+
+        const result = eventsList.map((event) => ({
+          ...event,
+          clubDetails: clubMap[event.clubId] || {
+            clubName: "Unknown Club",
+            category: "N/A",
+          },
+        }));
+
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching public events:", error);
+        res.status(500).send({ message: "Failed to fetch events." });
+      }
+    });
+
+    app.get("/events/:id", async (req, res) => {
+      const eventId = req.params.id;
+
+      if (!ObjectId.isValid(eventId)) {
+        return res.status(400).send({ message: "Invalid Event ID format." });
+      }
+
+      try {
+        const event = await eventsCollection.findOne({
+          _id: new ObjectId(eventId),
+        });
+
+        if (!event) {
+          return res.status(404).send({ message: "Event not found." });
+        }
+
+        const clubDetails = await clubsCollection.findOne(
+          { _id: new ObjectId(event.clubId) },
+          { projection: { clubName: 1, managerEmail: 1 } }
+        );
+        event.clubDetails = clubDetails || { clubName: "Unknown Club" };
+
+        res.send(event);
+      } catch (error) {
+        console.error("Error fetching event details:", error);
+        res.status(500).send({
+          message: "Failed to fetch event details due to server error.",
+        });
+      }
+    });
+
+    app.post(
+      "/event-payment/create-checkout-session",
+      verifyToken,
+      verifyMember,
+      async (req, res) => {
+        const { eventFee, eventId, userEmail } = req.body;
+        const callingEmail = req.tokenEmail;
+
+        if (callingEmail !== userEmail) {
+          return res
+            .status(403)
+            .send({ message: "Emails do not match. Unauthorized." });
+        }
+
+        if (!eventFee || !eventId) {
+          return res.status(400).send({ message: "Missing fee or event ID." });
+        }
+
+        try {
+          const event = await eventsCollection.findOne({
+            _id: new ObjectId(eventId),
+          });
+          if (!event || !event.isPaid) {
+            return res
+              .status(404)
+              .send({ message: "Event not found or is free." });
+          }
+
+          const existingRegistration =
+            await eventRegistrationsCollection.findOne({
+              eventId: eventId,
+              userEmail: userEmail,
+              status: "registered",
+            });
+
+          if (existingRegistration) {
+            return res.status(400).send({
+              message: "You are already registered for this event.",
+            });
+          }
+
+          const session = await stripe.checkout.sessions.create({
+            payment_method_types: ["card"],
+            line_items: [
+              {
+                price_data: {
+                  currency: "usd",
+                  product_data: {
+                    name: `${event.title} Registration`,
+                    description: `Registration for the event: ${event.title}.`,
+                  },
+                  unit_amount: Math.round(eventFee * 100),
+                },
+                quantity: 1,
+              },
+            ],
+            mode: "payment",
+            metadata: {
+              eventId: eventId,
+              userEmail: userEmail,
+              amount: eventFee.toString(),
+              type: "event",
+              clubId: event.clubId,
+            },
+            success_url: `${process.env.CLIENT_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}&type=event`,
+            cancel_url: `${process.env.CLIENT_URL}/events/${eventId}`,
+          });
+
+          res.send({ url: session.url });
+        } catch (error) {
+          console.error("Stripe Event Checkout Session Error:", error);
+          res
+            .status(500)
+            .send({ message: "Failed to create payment session for event." });
+        }
+      }
+    );
+
+    app.post(
+      "/events/register/:eventId",
+      verifyToken,
+      verifyMember,
+      async (req, res) => {
+        const eventId = req.params.eventId;
+        const userEmail = req.tokenEmail;
+
+        if (!ObjectId.isValid(eventId)) {
+          return res.status(400).send({ message: "Invalid Event ID." });
+        }
+
+        try {
+          const event = await eventsCollection.findOne({
+            _id: new ObjectId(eventId),
+          });
+
+          if (!event) {
+            return res.status(404).send({ message: "Event not found." });
+          }
+
+          if (event.isPaid && event.eventFee > 0) {
+            return res.status(400).send({
+              message:
+                "This event requires payment. Please use the payment flow.",
+            });
+          }
+
+          const existingRegistration =
+            await eventRegistrationsCollection.findOne({
+              eventId: eventId,
+              userEmail: userEmail,
+              status: "registered",
+            });
+
+          if (existingRegistration) {
+            return res.status(400).send({
+              message: "You are already registered for this event.",
+            });
+          }
+
+          const newRegistration = {
+            userEmail: userEmail,
+            eventId: eventId,
+            clubId: event.clubId,
+            status: "registered",
+            paymentId: "FREE_REGISTRATION",
+            registeredAt: new Date(),
+          };
+          await eventRegistrationsCollection.insertOne(newRegistration);
+
+          res
+            .status(201)
+            .send({ message: "Successfully registered for the event (Free)." });
+        } catch (error) {
+          console.error("Event registration failed (Free):", error);
+          res.status(500).send({
+            message:
+              "Failed to process free registration request due to server error.",
+          });
+        }
+      }
+    );
 
     app.get("/", (req, res) => {
       res.send("Hello World!");
