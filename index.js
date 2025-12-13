@@ -1633,6 +1633,150 @@ app.get("/member/payments", verifyToken, verifyMember, async (req, res) => {
     res.status(500).send({ message: "Failed to fetch payment history." });
   }
 });
+
+
+app.get("/admin/payments", verifyToken, verifyAdmin, async (req, res) => {
+    try {
+        const payments = await paymentsCollection
+            .find({})
+            .sort({ createdAt: -1 })
+            .toArray();
+
+        if (payments.length === 0) {
+            return res.send([]);
+        }
+
+        const clubIdsToFetch = [];
+        const eventIdsToFetch = [];
+
+        payments.forEach(payment => {
+            if (payment.clubId && !clubIdsToFetch.includes(payment.clubId)) {
+                clubIdsToFetch.push(payment.clubId);
+            }
+            if (payment.eventId && !eventIdsToFetch.includes(payment.eventId)) {
+                eventIdsToFetch.push(payment.eventId);
+            }
+        });
+
+        const objectClubIds = clubIdsToFetch.map(id => new ObjectId(id));
+        const objectEventIds = eventIdsToFetch.map(id => new ObjectId(id));
+
+        let clubsMap = {};
+        if (objectClubIds.length > 0) {
+            const clubs = await clubsCollection
+                .find(
+                    { _id: { $in: objectClubIds } },
+                    { projection: { clubName: 1 } }
+                )
+                .toArray();
+            
+            clubsMap = clubs.reduce((acc, club) => {
+                acc[club._id.toString()] = club.clubName;
+                return acc;
+            }, {});
+        }
+        let eventsMap = {};
+        if (objectEventIds.length > 0) {
+            const events = await eventsCollection
+                .find(
+                    { _id: { $in: objectEventIds } },
+                    { projection: { title: 1 } }
+                )
+                .toArray();
+            
+            eventsMap = events.reduce((acc, event) => {
+                acc[event._id.toString()] = event.title;
+                return acc;
+            }, {});
+        }
+
+        const result = payments.map(payment => ({
+            ...payment,
+            clubName: payment.clubId ? clubsMap[payment.clubId] || "Unknown Club" : null,
+            eventName: payment.eventId ? eventsMap[payment.eventId] || "Unknown Event" : null,
+        }));
+
+        res.send(result);
+    } catch (error) {
+        console.error("Admin payments fetch error:", error);
+        res.status(500).send({ message: "Failed to fetch all payments." });
+    }
+});
+app.get("/admin/stats", verifyToken, verifyAdmin, async (req, res) => {
+    try {
+        const totalUsers = await usersCollection.countDocuments();
+        const totalClubs = await clubsCollection.countDocuments();
+        const totalMemberships = await membershipsCollection.countDocuments();
+        const totalEvents = await eventsCollection.countDocuments(); 
+        const revenueResult = await paymentsCollection.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    totalRevenue: { $sum: "$amount" }
+                }
+            }
+        ]).toArray();
+        const totalRevenue = revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
+        const clubStatusCounts = await clubsCollection.aggregate([
+            {
+                $group: {
+                    _id: "$status",
+                    count: { $sum: 1 }
+                }
+            }
+        ]).toArray();
+          const clubsByStatus = clubStatusCounts.reduce((acc, item) => {
+            acc[item._id] = item.count;
+            return acc;
+        }, { approved: 0, pending: 0, rejected: 0 });
+
+        const membershipsByClub = await membershipsCollection.aggregate([
+          {
+                $addFields: {
+                    clubObjectId: { $toObjectId: "$clubId" }
+                }
+            },
+            {
+                $lookup: {
+                    from: "clubs", 
+                    localField: "clubObjectId",
+                    foreignField: "_id", 
+                    as: "clubInfo"
+                }
+            },
+            {
+                $unwind: "$clubInfo"
+            },
+            {
+                $group: {
+                    _id: "$clubId",
+                    clubName: { $first: "$clubInfo.clubName" },
+                    memberCount: { $sum: 1 }
+                }
+            },
+            { $sort: { memberCount: -1 } },
+            { $limit: 5 } 
+        ]).toArray();
+        console.log(membershipsByClub);
+        
+
+        res.send({
+            totalUsers,
+            totalClubs,
+            totalEvents,
+            totalMemberships,
+            totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+            approvedClubs: clubsByStatus.approved,
+            pendingClubs: clubsByStatus.pending,
+            rejectedClubs: clubsByStatus.rejected,
+            membershipsByClub,
+        });
+
+    } catch (error) {
+        console.error("Admin stats fetch error:", error);
+        res.status(500).send({ message: "Failed to fetch admin statistics." });
+    }
+});
     app.get("/", (req, res) => {
       res.send("Hello World!");
     });
