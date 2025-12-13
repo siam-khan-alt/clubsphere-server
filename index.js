@@ -50,7 +50,7 @@ const client = new MongoClient(uri, {
 });
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
     const database = client.db("ClubSphereDB");
     const usersCollection = database.collection("users");
     const clubsCollection = database.collection("clubs");
@@ -1091,6 +1091,15 @@ async function run() {
           paymentStatus: "paid",
           createdAt: new Date(),
         };
+        let clubName = null;
+        let eventTitle = null;
+        if (clubId) {
+        const club = await clubsCollection.findOne(
+            { _id: new ObjectId(clubId) },
+            { projection: { clubName: 1 } }
+        );
+        clubName = club ? club.clubName : "Unknown Club";
+    }
         if (type === "membership") {
           const existingMembership = await membershipsCollection.findOne({
             clubId: clubId,
@@ -1099,7 +1108,7 @@ async function run() {
           });
 
           if (existingMembership) {
-            return res.send({ message: "Membership already active.", clubId });
+            return res.send({ message: "Membership already active.", clubId ,clubName});
           }
           const newMembership = {
             userEmail: userEmail,
@@ -1121,9 +1130,17 @@ async function run() {
           res.send({
             message: "Membership and Payment successful.",
             clubId,
+            clubName,
             session,
           });
         } else if (type === "event") {
+          if (eventId) {
+        const event = await eventsCollection.findOne(
+            { _id: new ObjectId(eventId) },
+            { projection: { title: 1 } }
+        );
+        eventTitle = event ? event.title : "Unknown Event";
+      }
           const existingRegistration =
             await eventRegistrationsCollection.findOne({
               eventId: eventId,
@@ -1134,6 +1151,7 @@ async function run() {
             return res.send({
               message: "Already registered for event.",
               eventId,
+              eventTitle
             });
           }
 
@@ -1153,6 +1171,8 @@ async function run() {
           return res.send({
             message: "Event Registration and Payment successful.",
             eventId,
+            eventTitle,
+            clubName,
             session,
           });
         } else {
@@ -1460,10 +1480,163 @@ async function run() {
         }
       }
     );
+app.get(
+  "/member/stats-and-upcoming-events",
+  verifyToken,
+  verifyMember,
+  async (req, res) => {
+    const userEmail = req.tokenEmail;
+    const today = new Date();
 
+    try {
+      const totalClubsJoined = await membershipsCollection.countDocuments({
+        userEmail: userEmail,
+      });
+
+      const totalEventsRegistered =
+        await eventRegistrationsCollection.countDocuments({
+          userEmail: userEmail,
+          status: "registered",
+        });
+
+      const activeMemberships = await membershipsCollection
+        .find(
+          { userEmail: userEmail, status: "active" },
+          { projection: { clubId: 1, _id: 0 } }
+        )
+        .toArray();
+      const activeClubIds = activeMemberships.map(
+        (membership) => membership.clubId
+      );
+      const upcomingEvents = await eventsCollection
+        .find({
+          clubId: { $in: activeClubIds },
+          eventDate: { $gte: today }, 
+        })
+        .sort({ eventDate: 1 })
+        .limit(5) 
+        .project({
+          title: 1,
+          eventDate: 1,
+          clubName: 1,
+          location: 1,
+          clubId: 1,
+        })
+        .toArray();
+
+      res.send({
+        totalClubsJoined,
+        totalEventsRegistered,
+        upcomingEvents,
+      });
+    } catch (error) {
+      console.error("Member stats fetch error:", error);
+      res
+        .status(500)
+        .send({ message: "Failed to fetch member statistics and events." });
+    }
+  }
+);
+
+    app.get("/member/clubs", verifyToken, verifyMember, async (req, res) => {
+  const userEmail = req.tokenEmail;
+
+  try {
+    const memberships = await membershipsCollection
+      .find({ userEmail: userEmail })
+      .toArray();
+
+    const clubIds = memberships.map((m) => new ObjectId(m.clubId));
+
+    const clubsDetails = await clubsCollection
+      .find(
+        { _id: { $in: clubIds } },
+        { projection: { clubName: 1, location: 1 } }
+      )
+      .toArray();
+
+    const clubMap = clubsDetails.reduce((acc, club) => {
+      acc[club._id.toString()] = club;
+      return acc;
+    }, {});
+
+    const result = memberships.map((membership) => ({
+      ...membership,
+      clubName: clubMap[membership.clubId]?.clubName || "Club Not Found",
+      location: clubMap[membership.clubId]?.location || "N/A",
+    }));
+
+    res.send(result);
+  } catch (error) {
+    console.error("Member clubs fetch error:", error);
+    res
+      .status(500)
+      .send({ message: "Failed to fetch member clubs and memberships." });
+  }
+});
+
+app.get("/member/events", verifyToken, verifyMember, async (req, res) => {
+  const userEmail = req.tokenEmail;
+
+  try {
+    const registrations = await eventRegistrationsCollection
+      .find({ userEmail: userEmail })
+      .toArray();
+
+    const eventIds = registrations.map((r) => new ObjectId(r.eventId));
+
+    const eventsDetails = await eventsCollection
+      .find(
+        { _id: { $in: eventIds } },
+        {
+          projection: {
+            title: 1,
+            clubName: 1,
+            eventDate: 1,
+            clubId: 1,
+          },
+        }
+      )
+      .toArray();
+
+    const eventMap = eventsDetails.reduce((acc, event) => {
+      acc[event._id.toString()] = event;
+      return acc;
+    }, {});
+
+    const result = registrations.map((reg) => ({
+      ...reg,
+      eventTitle: eventMap[reg.eventId]?.title || "Event Title Missing",
+      clubName: eventMap[reg.eventId]?.clubName || "Club Missing",
+      eventDate: eventMap[reg.eventId]?.eventDate,
+    }));
+
+    res.send(result);
+  } catch (error) {
+    console.error("Member events fetch error:", error);
+    res.status(500).send({ message: "Failed to fetch registered events." });
+  }
+});
+
+app.get("/member/payments", verifyToken, verifyMember, async (req, res) => {
+  const userEmail = req.tokenEmail;
+
+  try {
+    const payments = await paymentsCollection
+      .find({ userEmail: userEmail })
+      .sort({ createdAt: -1 }) 
+      .toArray();
+
+    res.send(payments);
+  } catch (error) {
+    console.error("Member payments fetch error:", error);
+    res.status(500).send({ message: "Failed to fetch payment history." });
+  }
+});
     app.get("/", (req, res) => {
       res.send("Hello World!");
     });
+
 
     app.listen(port, () => {
       console.log(`Example app listening on port ${port}`);
