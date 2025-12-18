@@ -131,7 +131,24 @@ async function run() {
         });
       }
     });
-
+    app.patch("/users/update", async (req, res) => {
+      try {
+        const { email, name, photoURL } = req.body;
+        const filter = { email: email };
+        const updatedDoc = {
+          $set: {
+            name: name,
+            photoURL: photoURL,
+          },
+        };
+        const result = await usersCollection.updateOne(filter, updatedDoc);
+        res.send(result);
+      } catch (error) {
+        res
+          .status(500)
+          .send({ message: "Update failed", error: error.message });
+      }
+    });
     app.get("/users/role", verifyToken, async (req, res) => {
       try {
         const email = req.tokenEmail;
@@ -964,6 +981,43 @@ async function run() {
       }
     });
 
+    app.get("/featuredClubs", async (req, res) => {
+      try {
+        const featuredClubs = await clubsCollection
+          .aggregate([
+            { $match: { status: "approved" } },
+            {
+              $addFields: {
+                memberCount: { $size: "$members" },
+              },
+            },
+            { $sort: { memberCount: -1 } },
+            { $limit: 6 },
+
+            {
+              $project: {
+                _id: 1,
+                clubName: 1,
+                description: 1,
+                members: 1,
+                category: 1,
+                location: 1,
+                bannerImage: 1,
+                membershipFee: 1,
+              },
+            },
+          ])
+          .toArray();
+
+        res.status(200).send(featuredClubs);
+      } catch (error) {
+        console.error("Public club listing error:", error);
+        res
+          .status(500)
+          .send({ message: "Failed to fetch clubs due to server error." });
+      }
+    });
+
     app.get("/clubs/:id", async (req, res) => {
       const clubId = req.params.id;
 
@@ -1094,12 +1148,12 @@ async function run() {
         let clubName = null;
         let eventTitle = null;
         if (clubId) {
-        const club = await clubsCollection.findOne(
+          const club = await clubsCollection.findOne(
             { _id: new ObjectId(clubId) },
             { projection: { clubName: 1 } }
-        );
-        clubName = club ? club.clubName : "Unknown Club";
-    }
+          );
+          clubName = club ? club.clubName : "Unknown Club";
+        }
         if (type === "membership") {
           const existingMembership = await membershipsCollection.findOne({
             clubId: clubId,
@@ -1108,7 +1162,11 @@ async function run() {
           });
 
           if (existingMembership) {
-            return res.send({ message: "Membership already active.", clubId ,clubName});
+            return res.send({
+              message: "Membership already active.",
+              clubId,
+              clubName,
+            });
           }
           const newMembership = {
             userEmail: userEmail,
@@ -1135,12 +1193,12 @@ async function run() {
           });
         } else if (type === "event") {
           if (eventId) {
-        const event = await eventsCollection.findOne(
-            { _id: new ObjectId(eventId) },
-            { projection: { title: 1 } }
-        );
-        eventTitle = event ? event.title : "Unknown Event";
-      }
+            const event = await eventsCollection.findOne(
+              { _id: new ObjectId(eventId) },
+              { projection: { title: 1 } }
+            );
+            eventTitle = event ? event.title : "Unknown Event";
+          }
           const existingRegistration =
             await eventRegistrationsCollection.findOne({
               eventId: eventId,
@@ -1151,7 +1209,7 @@ async function run() {
             return res.send({
               message: "Already registered for event.",
               eventId,
-              eventTitle
+              eventTitle,
             });
           }
 
@@ -1438,7 +1496,12 @@ async function run() {
             return res.status(404).send({ message: "Event not found." });
           }
 
-          if (event.isPaid && event.eventFee > 0) {
+          if (
+            event.isPaid &&
+            (event.eventFee > 0 ||
+              event.eventFee === undefined ||
+              event.eventFee === null)
+          ) {
             return res.status(400).send({
               message:
                 "This event requires payment. Please use the payment flow.",
@@ -1463,6 +1526,8 @@ async function run() {
             eventId: eventId,
             clubId: event.clubId,
             status: "registered",
+            amount: 0,
+            paymentStatus: "paid",
             paymentId: "FREE_REGISTRATION",
             registeredAt: new Date(),
           };
@@ -1480,307 +1545,375 @@ async function run() {
         }
       }
     );
-app.get(
-  "/member/stats-and-upcoming-events",
-  verifyToken,
-  verifyMember,
-  async (req, res) => {
-    const userEmail = req.tokenEmail;
-    const today = new Date();
+    app.get(
+      "/member/stats-and-upcoming-events",
+      verifyToken,
+      verifyMember,
+      async (req, res) => {
+        const userEmail = req.tokenEmail;
+        const today = new Date();
 
-    try {
-      const totalClubsJoined = await membershipsCollection.countDocuments({
-        userEmail: userEmail,
-      });
+        try {
+          const totalClubsJoined = await membershipsCollection.countDocuments({
+            userEmail: userEmail,
+          });
 
-      const totalEventsRegistered =
-        await eventRegistrationsCollection.countDocuments({
-          userEmail: userEmail,
-          status: "registered",
-        });
+          const totalEventsRegistered =
+            await eventRegistrationsCollection.countDocuments({
+              userEmail: userEmail,
+              status: "registered",
+            });
 
-      const activeMemberships = await membershipsCollection
-        .find(
-          { userEmail: userEmail, status: "active" },
-          { projection: { clubId: 1, _id: 0 } }
-        )
-        .toArray();
-      const activeClubIds = activeMemberships.map(
-        (membership) => membership.clubId
-      );
-      const upcomingEvents = await eventsCollection
-        .find({
-          clubId: { $in: activeClubIds },
-          eventDate: { $gte: today }, 
-        })
-        .sort({ eventDate: 1 })
-        .limit(5) 
-        .project({
-          title: 1,
-          eventDate: 1,
-          clubName: 1,
-          location: 1,
-          clubId: 1,
-        })
-        .toArray();
-
-      res.send({
-        totalClubsJoined,
-        totalEventsRegistered,
-        upcomingEvents,
-      });
-    } catch (error) {
-      console.error("Member stats fetch error:", error);
-      res
-        .status(500)
-        .send({ message: "Failed to fetch member statistics and events." });
-    }
-  }
-);
-
-    app.get("/member/clubs", verifyToken, verifyMember, async (req, res) => {
-  const userEmail = req.tokenEmail;
-
-  try {
-    const memberships = await membershipsCollection
-      .find({ userEmail: userEmail })
-      .toArray();
-
-    const clubIds = memberships.map((m) => new ObjectId(m.clubId));
-
-    const clubsDetails = await clubsCollection
-      .find(
-        { _id: { $in: clubIds } },
-        { projection: { clubName: 1, location: 1 } }
-      )
-      .toArray();
-
-    const clubMap = clubsDetails.reduce((acc, club) => {
-      acc[club._id.toString()] = club;
-      return acc;
-    }, {});
-
-    const result = memberships.map((membership) => ({
-      ...membership,
-      clubName: clubMap[membership.clubId]?.clubName || "Club Not Found",
-      location: clubMap[membership.clubId]?.location || "N/A",
-    }));
-
-    res.send(result);
-  } catch (error) {
-    console.error("Member clubs fetch error:", error);
-    res
-      .status(500)
-      .send({ message: "Failed to fetch member clubs and memberships." });
-  }
-});
-
-app.get("/member/events", verifyToken, verifyMember, async (req, res) => {
-  const userEmail = req.tokenEmail;
-
-  try {
-    const registrations = await eventRegistrationsCollection
-      .find({ userEmail: userEmail })
-      .toArray();
-
-    const eventIds = registrations.map((r) => new ObjectId(r.eventId));
-
-    const eventsDetails = await eventsCollection
-      .find(
-        { _id: { $in: eventIds } },
-        {
-          projection: {
-            title: 1,
-            clubName: 1,
-            eventDate: 1,
-            clubId: 1,
-          },
-        }
-      )
-      .toArray();
-
-    const eventMap = eventsDetails.reduce((acc, event) => {
-      acc[event._id.toString()] = event;
-      return acc;
-    }, {});
-
-    const result = registrations.map((reg) => ({
-      ...reg,
-      eventTitle: eventMap[reg.eventId]?.title || "Event Title Missing",
-      clubName: eventMap[reg.eventId]?.clubName || "Club Missing",
-      eventDate: eventMap[reg.eventId]?.eventDate,
-    }));
-
-    res.send(result);
-  } catch (error) {
-    console.error("Member events fetch error:", error);
-    res.status(500).send({ message: "Failed to fetch registered events." });
-  }
-});
-
-app.get("/member/payments", verifyToken, verifyMember, async (req, res) => {
-  const userEmail = req.tokenEmail;
-
-  try {
-    const payments = await paymentsCollection
-      .find({ userEmail: userEmail })
-      .sort({ createdAt: -1 }) 
-      .toArray();
-
-    res.send(payments);
-  } catch (error) {
-    console.error("Member payments fetch error:", error);
-    res.status(500).send({ message: "Failed to fetch payment history." });
-  }
-});
-
-
-app.get("/admin/payments", verifyToken, verifyAdmin, async (req, res) => {
-    try {
-        const payments = await paymentsCollection
-            .find({})
-            .sort({ createdAt: -1 })
+          const activeMemberships = await membershipsCollection
+            .find(
+              { userEmail: userEmail, status: "active" },
+              { projection: { clubId: 1, _id: 0 } }
+            )
+            .toArray();
+          const activeClubIds = activeMemberships.map(
+            (membership) => membership.clubId
+          );
+          const upcomingEvents = await eventsCollection
+            .find({
+              clubId: { $in: activeClubIds },
+              eventDate: { $gte: today },
+            })
+            .sort({ eventDate: 1 })
+            .limit(5)
+            .project({
+              title: 1,
+              eventDate: 1,
+              clubName: 1,
+              location: 1,
+              clubId: 1,
+            })
             .toArray();
 
+          res.send({
+            totalClubsJoined,
+            totalEventsRegistered,
+            upcomingEvents,
+          });
+        } catch (error) {
+          console.error("Member stats fetch error:", error);
+          res
+            .status(500)
+            .send({ message: "Failed to fetch member statistics and events." });
+        }
+      }
+    );
+
+    app.get("/member/clubs", verifyToken, verifyMember, async (req, res) => {
+      const userEmail = req.tokenEmail;
+
+      try {
+        const memberships = await membershipsCollection
+          .find({ userEmail: userEmail })
+          .toArray();
+
+        const clubIds = memberships.map((m) => new ObjectId(m.clubId));
+
+        const clubsDetails = await clubsCollection
+          .find(
+            { _id: { $in: clubIds } },
+            { projection: { clubName: 1, location: 1 } }
+          )
+          .toArray();
+
+        const clubMap = clubsDetails.reduce((acc, club) => {
+          acc[club._id.toString()] = club;
+          return acc;
+        }, {});
+
+        const result = memberships.map((membership) => ({
+          ...membership,
+          clubName: clubMap[membership.clubId]?.clubName || "Club Not Found",
+          location: clubMap[membership.clubId]?.location || "N/A",
+        }));
+
+        res.send(result);
+      } catch (error) {
+        console.error("Member clubs fetch error:", error);
+        res
+          .status(500)
+          .send({ message: "Failed to fetch member clubs and memberships." });
+      }
+    });
+
+    app.get("/member/events", verifyToken, verifyMember, async (req, res) => {
+      const userEmail = req.tokenEmail;
+
+      try {
+        const registrations = await eventRegistrationsCollection
+          .find({ userEmail: userEmail })
+          .toArray();
+
+        const eventIds = registrations.map((r) => new ObjectId(r.eventId));
+
+        const eventsDetails = await eventsCollection
+          .find(
+            { _id: { $in: eventIds } },
+            {
+              projection: {
+                title: 1,
+                clubName: 1,
+                eventDate: 1,
+                clubId: 1,
+              },
+            }
+          )
+          .toArray();
+
+        const eventMap = eventsDetails.reduce((acc, event) => {
+          acc[event._id.toString()] = event;
+          return acc;
+        }, {});
+
+        const result = registrations.map((reg) => ({
+          ...reg,
+          eventTitle: eventMap[reg.eventId]?.title || "Event Title Missing",
+          clubName: eventMap[reg.eventId]?.clubName || "Club Missing",
+          eventDate: eventMap[reg.eventId]?.eventDate,
+        }));
+
+        res.send(result);
+      } catch (error) {
+        console.error("Member events fetch error:", error);
+        res.status(500).send({ message: "Failed to fetch registered events." });
+      }
+    });
+
+    app.get("/member/payments", verifyToken, verifyMember, async (req, res) => {
+      const userEmail = req.tokenEmail;
+
+      try {
+        const payments = await paymentsCollection
+          .find({ userEmail: userEmail })
+          .sort({ createdAt: -1 })
+          .toArray();
+
         if (payments.length === 0) {
-            return res.send([]);
+          return res.send([]);
         }
 
         const clubIdsToFetch = [];
         const eventIdsToFetch = [];
 
-        payments.forEach(payment => {
-            if (payment.clubId && !clubIdsToFetch.includes(payment.clubId)) {
-                clubIdsToFetch.push(payment.clubId);
-            }
-            if (payment.eventId && !eventIdsToFetch.includes(payment.eventId)) {
-                eventIdsToFetch.push(payment.eventId);
-            }
+        payments.forEach((payment) => {
+          if (payment.clubId && !clubIdsToFetch.includes(payment.clubId)) {
+            clubIdsToFetch.push(payment.clubId);
+          }
+          if (payment.eventId && !eventIdsToFetch.includes(payment.eventId)) {
+            eventIdsToFetch.push(payment.eventId);
+          }
         });
 
-        const objectClubIds = clubIdsToFetch.map(id => new ObjectId(id));
-        const objectEventIds = eventIdsToFetch.map(id => new ObjectId(id));
+        const objectClubIds = clubIdsToFetch.map((id) => new ObjectId(id));
+        const objectEventIds = eventIdsToFetch.map((id) => new ObjectId(id));
 
         let clubsMap = {};
         if (objectClubIds.length > 0) {
-            const clubs = await clubsCollection
-                .find(
-                    { _id: { $in: objectClubIds } },
-                    { projection: { clubName: 1 } }
-                )
-                .toArray();
-            
-            clubsMap = clubs.reduce((acc, club) => {
-                acc[club._id.toString()] = club.clubName;
-                return acc;
-            }, {});
+          const clubs = await clubsCollection
+            .find(
+              { _id: { $in: objectClubIds } },
+              { projection: { clubName: 1 } }
+            )
+            .toArray();
+
+          clubsMap = clubs.reduce((acc, club) => {
+            acc[club._id.toString()] = club.clubName;
+            return acc;
+          }, {});
         }
         let eventsMap = {};
         if (objectEventIds.length > 0) {
-            const events = await eventsCollection
-                .find(
-                    { _id: { $in: objectEventIds } },
-                    { projection: { title: 1 } }
-                )
-                .toArray();
-            
-            eventsMap = events.reduce((acc, event) => {
-                acc[event._id.toString()] = event.title;
-                return acc;
-            }, {});
+          const events = await eventsCollection
+            .find(
+              { _id: { $in: objectEventIds } },
+              { projection: { title: 1 } }
+            )
+            .toArray();
+
+          eventsMap = events.reduce((acc, event) => {
+            acc[event._id.toString()] = event.title;
+            return acc;
+          }, {});
         }
 
-        const result = payments.map(payment => ({
-            ...payment,
-            clubName: payment.clubId ? clubsMap[payment.clubId] || "Unknown Club" : null,
-            eventName: payment.eventId ? eventsMap[payment.eventId] || "Unknown Event" : null,
+        const result = payments.map((payment) => ({
+          ...payment,
+          clubName: payment.clubId
+            ? clubsMap[payment.clubId] || "Unknown Club"
+            : null,
+          eventName: payment.eventId
+            ? eventsMap[payment.eventId] || "Unknown Event"
+            : null,
         }));
 
         res.send(result);
-    } catch (error) {
+      } catch (error) {
+        console.error("Member payments fetch error:", error);
+        res.status(500).send({ message: "Failed to fetch payment history." });
+      }
+    });
+
+    app.get("/admin/payments", verifyToken, verifyAdmin, async (req, res) => {
+      try {
+        const payments = await paymentsCollection
+          .find({})
+          .sort({ createdAt: -1 })
+          .toArray();
+
+        if (payments.length === 0) {
+          return res.send([]);
+        }
+
+        const clubIdsToFetch = [];
+        const eventIdsToFetch = [];
+
+        payments.forEach((payment) => {
+          if (payment.clubId && !clubIdsToFetch.includes(payment.clubId)) {
+            clubIdsToFetch.push(payment.clubId);
+          }
+          if (payment.eventId && !eventIdsToFetch.includes(payment.eventId)) {
+            eventIdsToFetch.push(payment.eventId);
+          }
+        });
+
+        const objectClubIds = clubIdsToFetch.map((id) => new ObjectId(id));
+        const objectEventIds = eventIdsToFetch.map((id) => new ObjectId(id));
+
+        let clubsMap = {};
+        if (objectClubIds.length > 0) {
+          const clubs = await clubsCollection
+            .find(
+              { _id: { $in: objectClubIds } },
+              { projection: { clubName: 1 } }
+            )
+            .toArray();
+
+          clubsMap = clubs.reduce((acc, club) => {
+            acc[club._id.toString()] = club.clubName;
+            return acc;
+          }, {});
+        }
+        let eventsMap = {};
+        if (objectEventIds.length > 0) {
+          const events = await eventsCollection
+            .find(
+              { _id: { $in: objectEventIds } },
+              { projection: { title: 1 } }
+            )
+            .toArray();
+
+          eventsMap = events.reduce((acc, event) => {
+            acc[event._id.toString()] = event.title;
+            return acc;
+          }, {});
+        }
+
+        const result = payments.map((payment) => ({
+          ...payment,
+          clubName: payment.clubId
+            ? clubsMap[payment.clubId] || "Unknown Club"
+            : null,
+          eventName: payment.eventId
+            ? eventsMap[payment.eventId] || "Unknown Event"
+            : null,
+        }));
+
+        res.send(result);
+      } catch (error) {
         console.error("Admin payments fetch error:", error);
         res.status(500).send({ message: "Failed to fetch all payments." });
-    }
-});
-app.get("/admin/stats", verifyToken, verifyAdmin, async (req, res) => {
-    try {
+      }
+    });
+    app.get("/admin/stats", verifyToken, verifyAdmin, async (req, res) => {
+      try {
         const totalUsers = await usersCollection.countDocuments();
         const totalClubs = await clubsCollection.countDocuments();
         const totalMemberships = await membershipsCollection.countDocuments();
-        const totalEvents = await eventsCollection.countDocuments(); 
-        const revenueResult = await paymentsCollection.aggregate([
+        const totalEvents = await eventsCollection.countDocuments();
+        const revenueResult = await paymentsCollection
+          .aggregate([
             {
-                $group: {
-                    _id: null,
-                    totalRevenue: { $sum: "$amount" }
-                }
-            }
-        ]).toArray();
-        const totalRevenue = revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
-        const clubStatusCounts = await clubsCollection.aggregate([
+              $group: {
+                _id: null,
+                totalRevenue: { $sum: "$amount" },
+              },
+            },
+          ])
+          .toArray();
+        const totalRevenue =
+          revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
+        const clubStatusCounts = await clubsCollection
+          .aggregate([
             {
-                $group: {
-                    _id: "$status",
-                    count: { $sum: 1 }
-                }
-            }
-        ]).toArray();
-          const clubsByStatus = clubStatusCounts.reduce((acc, item) => {
+              $group: {
+                _id: "$status",
+                count: { $sum: 1 },
+              },
+            },
+          ])
+          .toArray();
+        const clubsByStatus = clubStatusCounts.reduce(
+          (acc, item) => {
             acc[item._id] = item.count;
             return acc;
-        }, { approved: 0, pending: 0, rejected: 0 });
+          },
+          { approved: 0, pending: 0, rejected: 0 }
+        );
 
-        const membershipsByClub = await membershipsCollection.aggregate([
-          {
-                $addFields: {
-                    clubObjectId: { $toObjectId: "$clubId" }
-                }
+        const membershipsByClub = await membershipsCollection
+          .aggregate([
+            {
+              $addFields: {
+                clubObjectId: { $toObjectId: "$clubId" },
+              },
             },
             {
-                $lookup: {
-                    from: "clubs", 
-                    localField: "clubObjectId",
-                    foreignField: "_id", 
-                    as: "clubInfo"
-                }
+              $lookup: {
+                from: "clubs",
+                localField: "clubObjectId",
+                foreignField: "_id",
+                as: "clubInfo",
+              },
             },
             {
-                $unwind: "$clubInfo"
+              $unwind: "$clubInfo",
             },
             {
-                $group: {
-                    _id: "$clubId",
-                    clubName: { $first: "$clubInfo.clubName" },
-                    memberCount: { $sum: 1 }
-                }
+              $group: {
+                _id: "$clubId",
+                clubName: { $first: "$clubInfo.clubName" },
+                memberCount: { $sum: 1 },
+              },
             },
             { $sort: { memberCount: -1 } },
-            { $limit: 5 } 
-        ]).toArray();
+            { $limit: 5 },
+          ])
+          .toArray();
         console.log(membershipsByClub);
-        
 
         res.send({
-            totalUsers,
-            totalClubs,
-            totalEvents,
-            totalMemberships,
-            totalRevenue: parseFloat(totalRevenue.toFixed(2)),
-            approvedClubs: clubsByStatus.approved,
-            pendingClubs: clubsByStatus.pending,
-            rejectedClubs: clubsByStatus.rejected,
-            membershipsByClub,
+          totalUsers,
+          totalClubs,
+          totalEvents,
+          totalMemberships,
+          totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+          approvedClubs: clubsByStatus.approved,
+          pendingClubs: clubsByStatus.pending,
+          rejectedClubs: clubsByStatus.rejected,
+          membershipsByClub,
         });
-
-    } catch (error) {
+      } catch (error) {
         console.error("Admin stats fetch error:", error);
         res.status(500).send({ message: "Failed to fetch admin statistics." });
-    }
-});
+      }
+    });
     app.get("/", (req, res) => {
       res.send("Hello World!");
     });
-
 
     app.listen(port, () => {
       console.log(`Example app listening on port ${port}`);
