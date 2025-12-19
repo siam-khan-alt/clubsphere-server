@@ -1830,10 +1830,26 @@ async function run() {
     });
     app.get("/admin/stats", verifyToken, verifyAdmin, async (req, res) => {
       try {
+        
         const totalUsers = await usersCollection.countDocuments();
         const totalClubs = await clubsCollection.countDocuments();
         const totalMemberships = await membershipsCollection.countDocuments();
         const totalEvents = await eventsCollection.countDocuments();
+        const recentUsers = await usersCollection
+          .find()
+          .sort({ createdAt: -1 })
+          .limit(2)
+          .toArray();
+        const recentClubs = await clubsCollection
+          .find({ status: { $ne: "pending" } })
+          .sort({ updatedAt: -1 })
+          .limit(2)
+          .toArray();
+        const recentPayments = await paymentsCollection
+          .find()
+          .sort({ createdAt: -1 })
+          .limit(2)
+          .toArray();
         const revenueResult = await paymentsCollection
           .aggregate([
             {
@@ -1893,7 +1909,26 @@ async function run() {
             { $limit: 5 },
           ])
           .toArray();
-        console.log(membershipsByClub);
+          const recentActivities = [
+    ...recentUsers.map(u => ({ 
+        text: `New User registered: ${u.email}`, 
+        color: 'blue', 
+        type: 'user',
+        time: u.createdAt 
+    })),
+    ...recentClubs.map(c => ({ 
+        text: `Club '${c.clubName}' was ${c.status}.`, 
+        color: c.status === 'approved' ? 'green' : 'red', 
+        type: 'club',
+        time: c.updatedAt 
+    })),
+    ...recentPayments.map(p => ({ 
+        text: `Payment of $${p.amount} received from ${p.userEmail}`, 
+        color: 'yellow', 
+        type: 'payment',
+        time: p.createdAt 
+    }))
+].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 5); 
 
         res.send({
           totalUsers,
@@ -1905,6 +1940,7 @@ async function run() {
           pendingClubs: clubsByStatus.pending,
           rejectedClubs: clubsByStatus.rejected,
           membershipsByClub,
+          recentActivities
         });
       } catch (error) {
         console.error("Admin stats fetch error:", error);
