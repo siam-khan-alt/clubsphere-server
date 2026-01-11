@@ -1616,7 +1616,7 @@ async function run() {
         const clubsDetails = await clubsCollection
           .find(
             { _id: { $in: clubIds } },
-            { projection: { clubName: 1, location: 1 } }
+            { projection: { clubName: 1, location: 1, bannerImage: 1 } }
           )
           .toArray();
 
