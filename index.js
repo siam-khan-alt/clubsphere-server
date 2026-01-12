@@ -992,7 +992,7 @@ async function run() {
               },
             },
             { $sort: { memberCount: -1 } },
-            { $limit: 6 },
+            { $limit: 4 },
 
             {
               $project: {
