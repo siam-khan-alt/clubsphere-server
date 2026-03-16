@@ -423,6 +423,36 @@ async function run() {
       }
     );
 
+
+    app.get("/popular-clubs", async (req, res) => {
+  try {
+    const popularClubs = await clubsCollection.aggregate([
+      {
+        $addFields: {
+          membersCount: { $size: { $ifNull: ["$members", []] } }
+        }
+      },
+      { $sort: { membersCount: -1 } }, 
+      { $limit: 6 }, 
+      {
+        $project: {
+          clubName: 1,
+          bannerImage: 1,
+          category: 1,
+          membersCount: 1,
+          membershipFee: 1,
+          managerEmail: 1,
+          description: 1
+        }
+      }
+    ]).toArray();
+
+    res.send(popularClubs);
+  } catch (error) {
+    res.status(500).send({ message: "Error fetching popular clubs" });
+  }
+});
+
     app.get("/manager/clubs", verifyToken, verifyManager, async (req, res) => {
       const managerEmail = req.tokenEmail;
 
