@@ -424,7 +424,7 @@ async function run() {
     );
 
 
-    app.get("/popular-clubs", async (req, res) => {
+app.get("/popular-clubsManagers", async (req, res) => {
   try {
     const popularClubs = await clubsCollection.aggregate([
       {
@@ -432,8 +432,17 @@ async function run() {
           membersCount: { $size: { $ifNull: ["$members", []] } }
         }
       },
-      { $sort: { membersCount: -1 } }, 
-      { $limit: 6 }, 
+      { $sort: { membersCount: -1 } },
+      { $limit: 6 },
+      {
+        $lookup: {
+          from: "users",
+          localField: "managerEmail",
+          foreignField: "email",
+          as: "managerDetails"
+        }
+      },
+      { $unwind: "$managerDetails" },
       {
         $project: {
           clubName: 1,
@@ -441,15 +450,18 @@ async function run() {
           category: 1,
           membersCount: 1,
           membershipFee: 1,
-          managerEmail: 1,
-          description: 1
+          location: 1,
+          meetingSchedule: 1,
+          description: 1,
+          managerName: "$managerDetails.name",
+          managerImage: "$managerDetails.photoURL"
         }
       }
     ]).toArray();
 
     res.send(popularClubs);
   } catch (error) {
-    res.status(500).send({ message: "Error fetching popular clubs" });
+    res.status(500).send({ message: "Error fetching popular managers" });
   }
 });
 
@@ -1022,7 +1034,7 @@ async function run() {
               },
             },
             { $sort: { memberCount: -1 } },
-            { $limit: 4 },
+            { $limit: 6 },
 
             {
               $project: {
