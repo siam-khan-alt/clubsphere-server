@@ -1588,62 +1588,74 @@ app.get("/popular-clubsManagers", async (req, res) => {
       }
     );
     app.get(
-      "/member/stats-and-upcoming-events",
-      verifyToken,
-      verifyMember,
-      async (req, res) => {
-        const userEmail = req.tokenEmail;
-        const today = new Date();
+  "/member/stats-and-upcoming-events",
+  verifyToken,
+  verifyMember,
+  async (req, res) => {
+    const userEmail = req.tokenEmail;
+    const today = new Date();
 
-        try {
-          const totalClubsJoined = await membershipsCollection.countDocuments({
-            userEmail: userEmail,
-          });
+    try {
+      const totalClubsJoined = await membershipsCollection.countDocuments({
+        userEmail: userEmail,
+      });
 
-          const totalEventsRegistered =
-            await eventRegistrationsCollection.countDocuments({
-              userEmail: userEmail,
-              status: "registered",
-            });
+      const totalEventsRegistered = await eventRegistrationsCollection.countDocuments({
+        userEmail: userEmail,
+        status: "registered",
+      });
 
-          const activeMemberships = await membershipsCollection
-            .find(
-              { userEmail: userEmail, status: "active" },
-              { projection: { clubId: 1, _id: 0 } }
-            )
-            .toArray();
-          const activeClubIds = activeMemberships.map(
-            (membership) => membership.clubId
-          );
-          const upcomingEvents = await eventsCollection
-            .find({
-              clubId: { $in: activeClubIds },
-              eventDate: { $gte: today },
-            })
-            .sort({ eventDate: 1 })
-            .limit(5)
-            .project({
-              title: 1,
-              eventDate: 1,
-              clubName: 1,
-              location: 1,
-              clubId: 1,
-            })
-            .toArray();
+      const activeMemberships = await membershipsCollection
+        .find({ userEmail: userEmail, status: "active" }, { projection: { clubId: 1, _id: 0 } })
+        .toArray();
+      
+      const activeClubIds = activeMemberships.map((m) => m.clubId);
 
-          res.send({
-            totalClubsJoined,
-            totalEventsRegistered,
-            upcomingEvents,
-          });
-        } catch (error) {
-          console.error("Member stats fetch error:", error);
-          res
-            .status(500)
-            .send({ message: "Failed to fetch member statistics and events." });
-        }
-      }
-    );
+      const upcomingEvents = await eventsCollection
+        .find({
+          clubId: { $in: activeClubIds },
+          eventDate: { $gte: today },
+        })
+        .sort({ eventDate: 1 })
+        .limit(4)
+        .toArray();
+
+      const suggestedClubs = await clubsCollection
+        .find({ 
+           members: { $ne: userEmail }, 
+           status: "approved" 
+        })
+        .limit(3)
+        .project({ clubName: 1, category: 1, bannerImage: 1, membershipFee: 1 })
+        .toArray();
+
+      const recentActivities = await eventRegistrationsCollection
+        .aggregate([
+          { $match: { userEmail: userEmail } },
+          { $sort: { registeredAt: -1 } },
+          { $limit: 3 },
+          {
+            $lookup: {
+              from: "events",
+              localField: "eventId",
+              foreignField: "_id", 
+              as: "eventDetails"
+            }
+          }
+        ]).toArray();
+
+      res.send({
+        totalClubsJoined,
+        totalEventsRegistered,
+        upcomingEvents,
+        suggestedClubs,
+        recentActivities
+      });
+    } catch (error) {
+      res.status(500).send({ message: "Error fetching data" });
+    }
+  }
+);
 
     app.get("/member/clubs", verifyToken, verifyMember, async (req, res) => {
       const userEmail = req.tokenEmail;
