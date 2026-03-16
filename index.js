@@ -1657,42 +1657,44 @@ app.get("/popular-clubsManagers", async (req, res) => {
   }
 );
 
-    app.get("/member/clubs", verifyToken, verifyMember, async (req, res) => {
-      const userEmail = req.tokenEmail;
-
-      try {
-        const memberships = await membershipsCollection
-          .find({ userEmail: userEmail })
-          .toArray();
-
-        const clubIds = memberships.map((m) => new ObjectId(m.clubId));
-
-        const clubsDetails = await clubsCollection
-          .find(
-            { _id: { $in: clubIds } },
-            { projection: { clubName: 1, location: 1, bannerImage: 1 } }
-          )
-          .toArray();
-
-        const clubMap = clubsDetails.reduce((acc, club) => {
-          acc[club._id.toString()] = club;
-          return acc;
-        }, {});
-
-        const result = memberships.map((membership) => ({
-          ...membership,
-          clubName: clubMap[membership.clubId]?.clubName || "Club Not Found",
-          location: clubMap[membership.clubId]?.location || "N/A",
-        }));
-
-        res.send(result);
-      } catch (error) {
-        console.error("Member clubs fetch error:", error);
-        res
-          .status(500)
-          .send({ message: "Failed to fetch member clubs and memberships." });
-      }
-    });
+   app.get("/member/clubs", verifyToken, verifyMember, async (req, res) => {
+    const userEmail = req.tokenEmail;
+    try {
+        const memberships = await membershipsCollection.aggregate([
+            { $match: { userEmail: userEmail } },
+            {
+                $addFields: {
+                    clubObjectId: { $toObjectId: "$clubId" }
+                }
+            },
+            {
+                $lookup: {
+                    from: "clubs",
+                    localField: "clubObjectId",
+                    foreignField: "_id",
+                    as: "clubDetails"
+                }
+            },
+            { $unwind: "$clubDetails" },
+            {
+                $project: {
+                    _id: 1,
+                    joinedAt: 1,
+                    status: 1,
+                    transactionId: 1,
+                    "clubDetails.clubName": 1,
+                    "clubDetails.category": 1,
+                    "clubDetails.bannerImage": 1,
+                    "clubDetails.location": 1,
+                    "clubDetails._id": 1
+                }
+            }
+        ]).toArray();
+        res.send(memberships);
+    } catch (error) {
+        res.status(500).send({ message: "Failed to fetch memberships" });
+    }
+});
 
     app.get("/member/events", verifyToken, verifyMember, async (req, res) => {
       const userEmail = req.tokenEmail;
