@@ -548,64 +548,76 @@ app.get("/popular-clubsManagers", async (req, res) => {
       }
     });
 
-  app.get("/manager/stats", verifyToken, verifyManager, async (req, res) => {
+app.get("/manager/stats", verifyToken, verifyManager, async (req, res) => {
     const managerEmail = req.tokenEmail;
 
     try {
+        // 1. Get managed clubs first
         const managedClubs = await clubsCollection.find({ managerEmail: managerEmail, status: "approved" }).toArray();
         const managedClubIds = managedClubs.map((club) => club._id.toString());
 
-        // 1. Club-wise Member Count
+        // 2. Club-wise Member Count (Simple map)
         const clubMemberStats = managedClubs.map(club => ({
             name: club.clubName,
             members: club.members?.length || 0
         }));
 
-        // 2. Club-wise Revenue (Membership payments)
+        // 3. Club-wise Revenue Aggregation
         const clubRevenueStats = await paymentsCollection.aggregate([
             { $match: { clubId: { $in: managedClubIds }, paymentStatus: "paid" } },
             { $group: { 
                 _id: "$clubId", 
                 revenue: { $sum: "$amount" } 
             }},
+            { 
+                $addFields: { clubObjectId: { $toObjectId: "$_id" } } 
+            },
             { $lookup: {
                 from: "clubs",
-                localField: "_id",
-                foreignField: "_id", 
+                localField: "clubObjectId",
+                foreignField: "_id",
                 as: "clubDetails"
             }},
-            // Mapping for frontend chart
             { $project: {
-                name: { $arrayElemAt: ["$clubDetails.clubName", 0] },
+                name: { $ifNull: [{ $arrayElemAt: ["$clubDetails.clubName", 0] }, "Unknown Club"] },
                 revenue: 1
             }}
         ]).toArray();
 
-        // 3. Event-wise Revenue
+        // 4. Event-wise Revenue Aggregation
         const eventRevenueStats = await paymentsCollection.aggregate([
             { $match: { clubId: { $in: managedClubIds }, paymentStatus: "paid", type: "event" } },
             { $group: { 
                 _id: "$eventId", 
                 revenue: { $sum: "$amount" } 
             }},
+            { 
+                $addFields: { eventObjectId: { $toObjectId: "$_id" } } 
+            },
             { $lookup: {
                 from: "events",
-                localField: "_id",
+                localField: "eventObjectId",
                 foreignField: "_id",
                 as: "eventDetails"
             }},
             { $project: {
-                name: { $arrayElemAt: ["$eventDetails.title", 0] },
+                name: { $ifNull: [{ $arrayElemAt: ["$eventDetails.title", 0] }, "Unknown Event"] },
                 revenue: 1
             }}
         ]).toArray();
 
+        // 5. Calculate Totals for StatCards
         const totalClubs = managedClubs.length;
+        const totalMembers = clubMemberStats.reduce((sum, item) => sum + item.members, 0);
+        const totalRevenue = clubRevenueStats.reduce((sum, item) => sum + item.revenue, 0);
+        
+        // Manual count for events if needed or use aggregation
+        const totalEventsCount = await eventsCollection.countDocuments({ clubId: { $in: managedClubIds } });
 
         res.send({
             totalClubs,
             totalMembers,
-            totalEvents,
+            totalEvents: totalEventsCount,
             totalRevenue,
             charts: {
                 clubMembers: clubMemberStats,
@@ -614,7 +626,8 @@ app.get("/popular-clubsManagers", async (req, res) => {
             }
         });
     } catch (error) {
-        res.status(500).send({ message: "Error fetching stats" });
+        console.error("Stats Error:", error);
+        res.status(500).send({ message: "Internal Server Error", error: error.message });
     }
 });
     app.get(
