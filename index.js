@@ -1889,124 +1889,138 @@ app.get("/manager/stats", verifyToken, verifyManager, async (req, res) => {
       }
     });
     app.get("/admin/stats", verifyToken, verifyAdmin, async (req, res) => {
-      try {
+    try {
+        const stats = await usersCollection.aggregate([
+            {
+                $facet: {
+                    // 1. Basic Counts
+                    "totalCounts": [
+                        {
+                            $group: {
+                                _id: null,
+                                totalUsers: { $sum: 1 }
+                            }
+                        }
+                    ],
+                    // 2. Club Status Breakdown
+                    "clubStats": [
+                        {
+                            $lookup: {
+                                from: "clubs",
+                                pipeline: [
+                                    {
+                                        $group: {
+                                            _id: "$status",
+                                            count: { $sum: 1 }
+                                        }
+                                    }
+                                ],
+                                as: "statusCounts"
+                            }
+                        },
+                        { $limit: 1 }
+                    ],
+                    // 3. Revenue Aggregation
+                    "revenueStats": [
+                        {
+                            $lookup: {
+                                from: "payments",
+                                pipeline: [
+                                    {
+                                        $group: {
+                                            _id: null,
+                                            totalRevenue: { $sum: "$amount" }
+                                        }
+                                    }
+                                ],
+                                as: "revenue"
+                            }
+                        }
+                    ],
+                    // 4. Monthly Revenue Trend (Last 6 Months)
+                    "monthlyRevenue": [
+                        {
+                            $lookup: {
+                                from: "payments",
+                                pipeline: [
+                                    {
+                                        $group: {
+                                            _id: { 
+                                                month: { $month: "$createdAt" }, 
+                                                year: { $year: "$createdAt" } 
+                                            },
+                                            amount: { $sum: "$amount" }
+                                        }
+                                    },
+                                    { $sort: { "_id.year": -1, "_id.month": -1 } },
+                                    { $limit: 6 }
+                                ],
+                                as: "trends"
+                            }
+                        }
+                    ]
+                }
+            }
+        ]).toArray();
+
+        // Extra Queries for Recent Activities (Facet e array heavy hoye jay tai alada rakha bhalo)
+        const [totalClubs, totalMemberships, totalEvents] = await Promise.all([
+            clubsCollection.countDocuments(),
+            membershipsCollection.countDocuments(),
+            eventsCollection.countDocuments()
+        ]);
+
+        const recentUsers = await usersCollection.find().sort({ createdAt: -1 }).limit(3).toArray();
+        const recentClubs = await clubsCollection.find({ status: { $ne: "pending" } }).sort({ updatedAt: -1 }).limit(3).toArray();
+        const recentPayments = await paymentsCollection.find().sort({ createdAt: -1 }).limit(3).toArray();
+
+        // Formatting the Data
+        const result = stats[0];
+        const totalUsers = result.totalCounts[0]?.totalUsers || 0;
+        const totalRevenue = result.revenueStats[0]?.revenue[0]?.totalRevenue || 0;
         
-        const totalUsers = await usersCollection.countDocuments();
-        const totalClubs = await clubsCollection.countDocuments();
-        const totalMemberships = await membershipsCollection.countDocuments();
-        const totalEvents = await eventsCollection.countDocuments();
-        const recentUsers = await usersCollection
-          .find()
-          .sort({ createdAt: -1 })
-          .limit(2)
-          .toArray();
-        const recentClubs = await clubsCollection
-          .find({ status: { $ne: "pending" } })
-          .sort({ updatedAt: -1 })
-          .limit(2)
-          .toArray();
-        const recentPayments = await paymentsCollection
-          .find()
-          .sort({ createdAt: -1 })
-          .limit(2)
-          .toArray();
-        const revenueResult = await paymentsCollection
-          .aggregate([
-            {
-              $group: {
-                _id: null,
-                totalRevenue: { $sum: "$amount" },
-              },
-            },
-          ])
-          .toArray();
-        const totalRevenue =
-          revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
-        const clubStatusCounts = await clubsCollection
-          .aggregate([
-            {
-              $group: {
-                _id: "$status",
-                count: { $sum: 1 },
-              },
-            },
-          ])
-          .toArray();
-        const clubsByStatus = clubStatusCounts.reduce(
-          (acc, item) => {
+        const clubStatusData = result.clubStats[0]?.statusCounts || [];
+        const clubsByStatus = clubStatusData.reduce((acc, item) => {
             acc[item._id] = item.count;
             return acc;
-          },
-          { approved: 0, pending: 0, rejected: 0 }
-        );
+        }, { approved: 0, pending: 0, rejected: 0 });
 
-        const membershipsByClub = await membershipsCollection
-          .aggregate([
-            {
-              $addFields: {
-                clubObjectId: { $toObjectId: "$clubId" },
-              },
-            },
-            {
-              $lookup: {
-                from: "clubs",
-                localField: "clubObjectId",
-                foreignField: "_id",
-                as: "clubInfo",
-              },
-            },
-            {
-              $unwind: "$clubInfo",
-            },
-            {
-              $group: {
-                _id: "$clubId",
-                clubName: { $first: "$clubInfo.clubName" },
-                memberCount: { $sum: 1 },
-              },
-            },
+        // Build Activity Feed
+        const recentActivities = [
+            ...recentUsers.map(u => ({ text: `New user: ${u.email}`, color: 'blue', time: u.createdAt })),
+            ...recentClubs.map(c => ({ text: `Club ${c.clubName} ${c.status}`, color: c.status === 'approved' ? 'green' : 'red', time: c.updatedAt })),
+            ...recentPayments.map(p => ({ text: `Payment of $${p.amount} from ${p.userEmail}`, color: 'yellow', time: p.createdAt }))
+        ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 6);
+
+        // Membership Distribution (Top 5)
+        const membershipsByClub = await membershipsCollection.aggregate([
+            { $addFields: { clubObjectId: { $toObjectId: "$clubId" } } },
+            { $lookup: { from: "clubs", localField: "clubObjectId", foreignField: "_id", as: "clubInfo" } },
+            { $unwind: "$clubInfo" },
+            { $group: { _id: "$clubId", clubName: { $first: "$clubInfo.clubName" }, memberCount: { $sum: 1 } } },
             { $sort: { memberCount: -1 } },
-            { $limit: 5 },
-          ])
-          .toArray();
-          const recentActivities = [
-    ...recentUsers.map(u => ({ 
-        text: `New User registered: ${u.email}`, 
-        color: 'blue', 
-        type: 'user',
-        time: u.createdAt 
-    })),
-    ...recentClubs.map(c => ({ 
-        text: `Club '${c.clubName}' was ${c.status}.`, 
-        color: c.status === 'approved' ? 'green' : 'red', 
-        type: 'club',
-        time: c.updatedAt 
-    })),
-    ...recentPayments.map(p => ({ 
-        text: `Payment of $${p.amount} received from ${p.userEmail}`, 
-        color: 'yellow', 
-        type: 'payment',
-        time: p.createdAt 
-    }))
-].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 5); 
+            { $limit: 5 }
+        ]).toArray();
 
         res.send({
-          totalUsers,
-          totalClubs,
-          totalEvents,
-          totalMemberships,
-          totalRevenue: parseFloat(totalRevenue.toFixed(2)),
-          approvedClubs: clubsByStatus.approved,
-          pendingClubs: clubsByStatus.pending,
-          rejectedClubs: clubsByStatus.rejected,
-          membershipsByClub,
-          recentActivities
+            totalUsers,
+            totalClubs,
+            totalEvents,
+            totalMemberships,
+            totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+            approvedClubs: clubsByStatus.approved,
+            pendingClubs: clubsByStatus.pending,
+            rejectedClubs: clubsByStatus.rejected,
+            membershipsByClub,
+            recentActivities,
+            monthlyTrends: result.monthlyRevenue[0]?.trends || []
         });
-      } catch (error) {
-        console.error("Admin stats fetch error:", error);
-        res.status(500).send({ message: "Failed to fetch admin statistics." });
-      }
-    });
+
+    } catch (error) {
+        console.error("Admin Dashboard Error:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+    }
+});
     app.get("/", (req, res) => {
       res.send("Hello World!");
     });
