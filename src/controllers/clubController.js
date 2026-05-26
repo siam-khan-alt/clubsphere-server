@@ -1,0 +1,521 @@
+const { ObjectId } = require("mongodb");
+const { getCollections } = require("../config");
+
+/**
+ * Create a new club (manager only)
+ */
+const createClub = async (req, res) => {
+  const {
+    name,
+    description,
+    category,
+    location,
+    bannerImage,
+    membershipFee,
+    meetingSchedule,
+  } = req.body;
+
+  const managerEmail = req.tokenEmail;
+  const { clubsCollection } = getCollections();
+
+  if (
+    !name ||
+    !description ||
+    !category ||
+    !location ||
+    membershipFee === undefined
+  ) {
+    return res.status(400).send({
+      message:
+        "Please provide all required club information (Name, Description, Category, Location, Fee).",
+    });
+  }
+
+  if (typeof membershipFee !== "number" || membershipFee < 0) {
+    return res
+      .status(400)
+      .send({ message: "Membership Fee must be a non-negative number." });
+  }
+
+  try {
+    const newClub = {
+      clubName: name,
+      description: description,
+      category: category,
+      location: location,
+      bannerImage: bannerImage || null,
+      membershipFee: membershipFee,
+      meetingSchedule: meetingSchedule || "TBD",
+      managerEmail: managerEmail,
+      status: "pending",
+      members: [managerEmail],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const result = await clubsCollection.insertOne(newClub);
+
+    res.status(201).json({
+      message:
+        "Club creation request submitted successfully! Awaiting Admin approval.",
+      clubId: result.insertedId,
+      club: newClub,
+    });
+  } catch (error) {
+    console.error("Club creation error:", error);
+    res.status(500).send({
+      message: "Failed to submit club request due to server error.",
+    });
+  }
+};
+
+/**
+ * Get all clubs for admin (admin only)
+ */
+const getAdminClubs = async (req, res) => {
+  try {
+    const { clubsCollection } = getCollections();
+    const clubs = await clubsCollection.find({}).toArray();
+
+    const refinedClubs = clubs.map((club) => ({
+      ...club,
+      membersCount: club.members ? club.members.length : 0,
+      eventsCount: club.eventsCount || 0,
+      membershipFee: club.membershipFee || 0,
+    }));
+
+    res.send(refinedClubs);
+  } catch (error) {
+    console.error("Failed to fetch clubs for admin:", error);
+    res.status(500).send({ message: "Could not retrieve club list." });
+  }
+};
+
+/**
+ * Update club status (admin only)
+ */
+const updateClubStatus = async (req, res) => {
+  const clubId = req.params.clubId;
+  const { status } = req.body;
+  const { clubsCollection } = getCollections();
+
+  if (!status || (status !== "approved" && status !== "rejected")) {
+    return res.status(400).send({
+      message: 'Invalid status provided. Must be "approved" or "rejected".',
+    });
+  }
+
+  try {
+    const result = await clubsCollection.updateOne(
+      { _id: new ObjectId(clubId) },
+      { $set: { status: status, updatedAt: new Date() } }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).send({ message: "Club not found." });
+    }
+
+    res.send({
+      message: `Club status updated to ${status.toUpperCase()}`,
+      modifiedCount: result.modifiedCount,
+    });
+  } catch (error) {
+    console.error("Admin club status update error:", error);
+    res.status(500).send({
+      message: "Failed to update club status due to server error.",
+    });
+  }
+};
+
+/**
+ * Delete club (admin only)
+ */
+const deleteAdminClub = async (req, res) => {
+  const clubId = req.params.clubId;
+  const { clubsCollection } = getCollections();
+
+  if (!clubId) {
+    return res
+      .status(400)
+      .send({ message: "Club ID is required for deletion." });
+  }
+
+  try {
+    const result = await clubsCollection.deleteOne({
+      _id: new ObjectId(clubId),
+    });
+
+    if (result.deletedCount === 0) {
+      return res
+        .status(404)
+        .send({ message: "Club not found or already deleted." });
+    }
+
+    res.send({
+      message: "Club deleted successfully.",
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    console.error("Admin club deletion error:", error);
+    res
+      .status(500)
+      .send({ message: "Failed to delete club due to server error." });
+  }
+};
+
+/**
+ * Get popular clubs with manager details (public)
+ */
+const getPopularClubs = async (req, res) => {
+  try {
+    const { clubsCollection, usersCollection } = getCollections();
+    const popularClubs = await clubsCollection
+      .aggregate([
+        {
+          $addFields: {
+            membersCount: { $size: { $ifNull: ["$members", []] } },
+          },
+        },
+        { $sort: { membersCount: -1 } },
+        { $limit: 6 },
+        {
+          $lookup: {
+            from: "users",
+            localField: "managerEmail",
+            foreignField: "email",
+            as: "managerDetails",
+          },
+        },
+        { $unwind: "$managerDetails" },
+        {
+          $project: {
+            clubName: 1,
+            bannerImage: 1,
+            category: 1,
+            membersCount: 1,
+            membershipFee: 1,
+            location: 1,
+            meetingSchedule: 1,
+            description: 1,
+            managerName: "$managerDetails.name",
+            managerImage: "$managerDetails.photoURL",
+          },
+        },
+      ])
+      .toArray();
+
+    res.send(popularClubs);
+  } catch (error) {
+    res.status(500).send({ message: "Error fetching popular managers" });
+  }
+};
+
+/**
+ * Get manager's clubs (manager only)
+ */
+const getManagerClubs = async (req, res) => {
+  const managerEmail = req.tokenEmail;
+  const { clubsCollection } = getCollections();
+
+  try {
+    const clubs = await clubsCollection
+      .find({ managerEmail: managerEmail })
+      .toArray();
+
+    const refinedClubs = clubs.map((club) => ({
+      ...club,
+      membersCount: club.members ? club.members.length : 0,
+      eventsCount: club.eventsCount || 0,
+      membershipFee: club.membershipFee || 0,
+    }));
+
+    res.send(refinedClubs);
+  } catch (error) {
+    console.error("Failed to fetch clubs for manager:", error);
+    res
+      .status(500)
+      .send({ message: "Could not retrieve manager club list." });
+  }
+};
+
+/**
+ * Update club (manager only)
+ */
+const updateClub = async (req, res) => {
+  const clubId = req.params.id;
+  const updateData = req.body;
+  const managerEmail = req.tokenEmail;
+  const { clubsCollection } = getCollections();
+
+  const updateDoc = {
+    $set: {
+      clubName: updateData.clubName,
+      description: updateData.description,
+      location: updateData.location,
+      membershipFee: parseFloat(updateData.membershipFee),
+      category: updateData.category,
+      bannerImage: updateData.bannerImage,
+      updatedAt: new Date(),
+    },
+  };
+  try {
+    const result = await clubsCollection.updateOne(
+      {
+        _id: new ObjectId(clubId),
+        managerEmail: managerEmail,
+      },
+      updateDoc
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).send({
+        message: "Club not found or you are not authorized to manage it.",
+      });
+    }
+
+    res.send({ message: "Club details updated successfully." });
+  } catch (error) {
+    console.error("Club update error:", error);
+    res.status(500).send({ message: "Failed to update club." });
+  }
+};
+
+/**
+ * Delete club (manager only)
+ */
+const deleteClub = async (req, res) => {
+  const clubId = req.params.id;
+  const managerEmail = req.tokenEmail;
+  const { clubsCollection } = getCollections();
+
+  try {
+    const result = await clubsCollection.deleteOne({
+      _id: new ObjectId(clubId),
+      managerEmail: managerEmail,
+    });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).send({
+        message: "Club not found or you are not authorized to delete it.",
+      });
+    }
+
+    res.send({ message: "Club deleted successfully." });
+  } catch (error) {
+    console.error("Club deletion error:", error);
+    res.status(500).send({ message: "Failed to delete club." });
+  }
+};
+
+/**
+ * Public club listing with search and filter
+ */
+const getPublicClubs = async (req, res) => {
+  try {
+    const { search, category, sort } = req.query;
+    const { clubsCollection } = getCollections();
+    let query = { status: "approved" };
+    let sortOption = {};
+
+    if (search) {
+      query.clubName = { $regex: search, $options: "i" };
+    }
+
+    if (category && category !== "all") {
+      query.category = category;
+    }
+
+    if (sort) {
+      switch (sort) {
+        case "fee_asc":
+          sortOption.membershipFee = 1;
+          break;
+        case "fee_desc":
+          sortOption.membershipFee = -1;
+          break;
+        case "newest":
+          sortOption.createdAt = -1;
+          break;
+        case "oldest":
+          sortOption.createdAt = 1;
+          break;
+        default:
+          sortOption.createdAt = -1;
+      }
+    } else {
+      sortOption.createdAt = -1;
+    }
+
+    const clubs = await clubsCollection
+      .find(query)
+      .sort(sortOption)
+      .toArray();
+
+    res.send(clubs);
+  } catch (error) {
+    console.error("Public club listing error:", error);
+    res
+      .status(500)
+      .send({ message: "Failed to fetch clubs due to server error." });
+  }
+};
+
+/**
+ * Get featured clubs (public)
+ */
+const getFeaturedClubs = async (req, res) => {
+  try {
+    const { clubsCollection } = getCollections();
+    const featuredClubs = await clubsCollection
+      .aggregate([
+        { $match: { status: "approved" } },
+        {
+          $addFields: {
+            memberCount: { $size: "$members" },
+          },
+        },
+        { $sort: { memberCount: -1 } },
+        { $limit: 6 },
+        {
+          $project: {
+            _id: 1,
+            clubName: 1,
+            description: 1,
+            members: 1,
+            category: 1,
+            location: 1,
+            bannerImage: 1,
+            membershipFee: 1,
+          },
+        },
+      ])
+      .toArray();
+
+    res.status(200).send(featuredClubs);
+  } catch (error) {
+    console.error("Public club listing error:", error);
+    res
+      .status(500)
+      .send({ message: "Failed to fetch clubs due to server error." });
+  }
+};
+
+/**
+ * Get club details by ID (public)
+ */
+const getClubById = async (req, res) => {
+  const clubId = req.params.id;
+  const { clubsCollection } = getCollections();
+
+  if (!ObjectId.isValid(clubId)) {
+    return res.status(400).send({ message: "Invalid Club ID format." });
+  }
+
+  try {
+    const club = await clubsCollection.findOne({
+      _id: new ObjectId(clubId),
+      status: "approved",
+    });
+
+    if (!club) {
+      return res
+        .status(404)
+        .send({ message: "Club not found or not approved yet." });
+    }
+
+    res.send(club);
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to fetch club details due to server error.",
+    });
+  }
+};
+
+/**
+ * Join a club (member only)
+ */
+const joinClub = async (req, res) => {
+  const clubId = req.params.id;
+  const userEmail = req.tokenEmail;
+  const { paymentStatus } = req.body;
+  const { clubsCollection, membershipsCollection } = getCollections();
+
+  if (!ObjectId.isValid(clubId)) {
+    return res.status(400).send({ message: "Invalid Club ID." });
+  }
+
+  try {
+    const club = await clubsCollection.findOne({
+      _id: new ObjectId(clubId),
+      status: "approved",
+    });
+    if (!club) {
+      return res
+        .status(404)
+        .send({ message: "Club not found or not approved." });
+    }
+    if (club.membershipFee > 0) {
+      return res.status(400).send({
+        message:
+          "This club requires a paid membership. Please use the payment flow.",
+      });
+    }
+
+    const existingMembership = await membershipsCollection.findOne({
+      clubId: clubId,
+      userEmail: userEmail,
+      status: "active",
+    });
+
+    if (existingMembership) {
+      return res.status(400).send({
+        message: "You are already an active member of this club.",
+      });
+    }
+
+    const newMembership = {
+      userEmail: userEmail,
+      clubId: clubId,
+      status: "active",
+      paymentId: "FREE_JOIN",
+      joinedAt: new Date(),
+      expiresAt: null,
+    };
+    await membershipsCollection.insertOne(newMembership);
+
+    const updateResult = await clubsCollection.updateOne(
+      { _id: new ObjectId(clubId), status: "approved" },
+      { $addToSet: { members: userEmail } }
+    );
+
+    if (updateResult.modifiedCount === 0) {
+      console.warn(
+        `Club ${clubId} members array was likely already updated for ${userEmail}.`
+      );
+    }
+
+    res
+      .status(201)
+      .send({ message: "Successfully joined the club (Free Membership)." });
+  } catch (error) {
+    console.error("Club joining failed (Free):", error);
+    res.status(500).send({
+      message: "Failed to process free join request due to server error.",
+    });
+  }
+};
+
+module.exports = {
+  createClub,
+  getAdminClubs,
+  updateClubStatus,
+  deleteAdminClub,
+  getPopularClubs,
+  getManagerClubs,
+  updateClub,
+  deleteClub,
+  getPublicClubs,
+  getFeaturedClubs,
+  getClubById,
+  joinClub,
+};
