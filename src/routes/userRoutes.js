@@ -8,8 +8,9 @@ const {
   getAllUsers,
   updateUserRole,
   deleteUser,
+  getMemberStatsAndUpcomingEvents,
 } = require("../controllers/userController");
-const { verifyToken, verifyAdmin } = require("../middleware/authMiddleware");
+const { verifyToken, verifyAdmin, verifyMember } = require("../middleware/authMiddleware");
 
 // Public routes
 router.post("/register", registerUser);
@@ -18,6 +19,9 @@ router.post("/google-login", googleLogin);
 // Authenticated routes
 router.patch("/update", verifyToken, updateUser);
 router.get("/role", verifyToken, getUserRole);
+
+// Member only routes
+router.get("/member/stats-and-upcoming-events", verifyToken, verifyMember, getMemberStatsAndUpcomingEvents);
 
 // Admin only routes
 router.get("/", verifyToken, verifyAdmin, getAllUsers);

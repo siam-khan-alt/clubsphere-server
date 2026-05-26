@@ -225,6 +225,69 @@ const deleteUser = async (req, res) => {
   }
 };
 
+/**
+ * Get member stats and upcoming events (member only)
+ */
+const getMemberStatsAndUpcomingEvents = async (req, res) => {
+  const userEmail = req.tokenEmail;
+  const { membershipsCollection, eventRegistrationsCollection, eventsCollection, clubsCollection } = getCollections();
+
+  try {
+    const memberships = await membershipsCollection
+      .find({ userEmail: userEmail, status: "active" })
+      .toArray();
+
+    const registrations = await eventRegistrationsCollection
+      .find({ userEmail: userEmail, status: "registered" })
+      .toArray();
+
+    const eventIds = registrations.map((reg) => new ObjectId(reg.eventId));
+    const upcomingEvents = await eventsCollection
+      .find({ 
+        _id: { $in: eventIds },
+        eventDate: { $gte: new Date() }
+      })
+      .sort({ eventDate: 1 })
+      .limit(5)
+      .toArray();
+
+    const clubIds = upcomingEvents.map((event) => new ObjectId(event.clubId));
+    const clubs = await clubsCollection
+      .find({ _id: { $in: clubIds } })
+      .toArray();
+
+    const clubMap = clubs.reduce((acc, club) => {
+      acc[club._id.toString()] = club;
+      return acc;
+    }, {});
+
+    const eventsWithClubNames = upcomingEvents.map((event) => ({
+      ...event,
+      clubName: clubMap[event.clubId]?.clubName || "Unknown Club",
+    }));
+
+    // Get suggested clubs (approved clubs not joined by user)
+    const joinedClubIds = memberships.map((m) => new ObjectId(m.clubId));
+    const suggestedClubs = await clubsCollection
+      .find({ 
+        _id: { $nin: joinedClubIds },
+        status: "approved"
+      })
+      .limit(3)
+      .toArray();
+
+    res.send({
+      totalClubsJoined: memberships.length,
+      totalEventsRegistered: registrations.length,
+      upcomingEvents: eventsWithClubNames,
+      suggestedClubs: suggestedClubs,
+    });
+  } catch (error) {
+    console.error("Error fetching member stats:", error);
+    res.status(500).send({ message: "Failed to fetch member stats." });
+  }
+};
+
 module.exports = {
   registerUser,
   googleLogin,
@@ -233,4 +296,5 @@ module.exports = {
   getAllUsers,
   updateUserRole,
   deleteUser,
+  getMemberStatsAndUpcomingEvents,
 };

@@ -13,6 +13,7 @@ const {
   getFeaturedClubs,
   getClubById,
   joinClub,
+  getMemberClubs,
 } = require("../controllers/clubController");
 const { verifyToken, verifyAdmin, verifyManager, verifyMember } = require("../middleware/authMiddleware");
 
@@ -31,6 +32,7 @@ router.patch("/admin/clubs/status/:clubId", verifyToken, verifyAdmin, updateClub
 router.delete("/admin/clubs/:clubId", verifyToken, verifyAdmin, deleteAdminClub);
 
 // Member routes (specific routes before dynamic)
+router.get("/member/clubs", verifyToken, verifyMember, getMemberClubs);
 router.post("/join/:id", verifyToken, verifyMember, joinClub);
 
 // Dynamic routes (must be last)

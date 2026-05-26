@@ -92,7 +92,7 @@ const createMembershipCheckoutSession = async (req, res) => {
 const handleStripeWebhook = async (req, res) => {
   const sig = req.headers["stripe-signature"];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  const { clubsCollection, membershipsCollection, eventRegistrationsCollection, paymentsCollection } = getCollections();
+  const { clubsCollection, membershipsCollection, eventRegistrationsCollection, paymentsCollection, eventsCollection } = getCollections();
 
   let event;
 
@@ -212,7 +212,83 @@ const handleStripeWebhook = async (req, res) => {
   res.status(200).json({ received: true });
 };
 
+/**
+ * Get member's payment history (member only)
+ */
+const getMemberPayments = async (req, res) => {
+  const userEmail = req.tokenEmail;
+  const { paymentsCollection, clubsCollection, eventsCollection } = getCollections();
+
+  try {
+    const payments = await paymentsCollection
+      .find({ userEmail: userEmail })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    const result = await Promise.all(
+      payments.map(async (payment) => {
+        let details = {};
+        if (payment.type === "membership" && payment.clubId) {
+          const club = await clubsCollection.findOne(
+            { _id: new ObjectId(payment.clubId) },
+            { projection: { clubName: 1, bannerImage: 1 } }
+          );
+          details.clubName = club?.clubName || "Unknown Club";
+          details.bannerImage = club?.bannerImage || "";
+        } else if (payment.type === "event" && payment.eventId) {
+          const event = await eventsCollection.findOne(
+            { _id: new ObjectId(payment.eventId) },
+            { projection: { title: 1, bannerImage: 1 } }
+          );
+          details.eventTitle = event?.title || "Unknown Event";
+          details.bannerImage = event?.bannerImage || "";
+        }
+        return { ...payment, ...details };
+      })
+    );
+
+    res.send(result);
+  } catch (error) {
+    console.error("Error fetching member payments:", error);
+    res.status(500).send({ message: "Failed to fetch payment history." });
+  }
+};
+
+/**
+ * Verify payment success (public)
+ */
+const verifyPaymentSuccess = async (req, res) => {
+  const { session_id } = req.query;
+  const { paymentsCollection } = getCollections();
+
+  if (!session_id) {
+    return res.status(400).send({ message: "Session ID is required." });
+  }
+
+  try {
+    const payment = await paymentsCollection.findOne({
+      sessionId: session_id,
+      status: "completed",
+    });
+
+    if (!payment) {
+      return res.status(404).send({ message: "Payment not found." });
+    }
+
+    res.send({
+      type: payment.type,
+      clubId: payment.clubId,
+      eventId: payment.eventId,
+    });
+  } catch (error) {
+    console.error("Error verifying payment:", error);
+    res.status(500).send({ message: "Failed to verify payment." });
+  }
+};
+
 module.exports = {
   createMembershipCheckoutSession,
   handleStripeWebhook,
+  getMemberPayments,
+  verifyPaymentSuccess,
 };

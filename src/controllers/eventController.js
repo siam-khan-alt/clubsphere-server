@@ -493,6 +493,71 @@ const registerForEvent = async (req, res) => {
   }
 };
 
+/**
+ * Check event registration status (member only)
+ */
+const checkEventRegistrationStatus = async (req, res) => {
+  const eventId = req.params.eventId;
+  const userEmail = req.query.userEmail;
+  const { eventRegistrationsCollection } = getCollections();
+
+  if (!userEmail) {
+    return res.status(400).send({ message: "User email is required." });
+  }
+
+  try {
+    const registration = await eventRegistrationsCollection.findOne({
+      eventId: eventId,
+      userEmail: userEmail,
+      status: "registered",
+    });
+
+    res.send({ isRegistered: !!registration });
+  } catch (error) {
+    console.error("Error checking event registration status:", error);
+    res.status(500).send({ message: "Failed to check registration status." });
+  }
+};
+
+/**
+ * Get member's registered events (member only)
+ */
+const getMemberEvents = async (req, res) => {
+  const userEmail = req.tokenEmail;
+  const { eventRegistrationsCollection, eventsCollection, clubsCollection } = getCollections();
+
+  try {
+    const registrations = await eventRegistrationsCollection
+      .find({ userEmail: userEmail, status: "registered" })
+      .toArray();
+
+    const eventIds = registrations.map((reg) => new ObjectId(reg.eventId));
+    const events = await eventsCollection
+      .find({ _id: { $in: eventIds } })
+      .toArray();
+
+    const clubIds = events.map((event) => new ObjectId(event.clubId));
+    const clubs = await clubsCollection
+      .find({ _id: { $in: clubIds } })
+      .toArray();
+
+    const clubMap = clubs.reduce((acc, club) => {
+      acc[club._id.toString()] = club;
+      return acc;
+    }, {});
+
+    const result = events.map((event) => ({
+      ...event,
+      clubDetails: clubMap[event.clubId] || { clubName: "Unknown Club" },
+    }));
+
+    res.send(result);
+  } catch (error) {
+    console.error("Error fetching member events:", error);
+    res.status(500).send({ message: "Failed to fetch member events." });
+  }
+};
+
 module.exports = {
   getManagerEvents,
   getEventRegistrations,
@@ -503,4 +568,6 @@ module.exports = {
   getEventById,
   createEventPaymentSession,
   registerForEvent,
+  checkEventRegistrationStatus,
+  getMemberEvents,
 };

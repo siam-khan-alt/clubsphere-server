@@ -10,6 +10,8 @@ const {
   getEventById,
   createEventPaymentSession,
   registerForEvent,
+  checkEventRegistrationStatus,
+  getMemberEvents,
 } = require("../controllers/eventController");
 const { verifyToken, verifyManager, verifyMember } = require("../middleware/authMiddleware");
 
@@ -24,6 +26,8 @@ router.patch("/manager/events/:id", verifyToken, verifyManager, updateEvent);
 router.delete("/manager/events/:id", verifyToken, verifyManager, deleteEvent);
 
 // Member routes (specific routes before dynamic)
+router.get("/member/events", verifyToken, verifyMember, getMemberEvents);
+router.get("/member/event-registration-status/:eventId", verifyToken, verifyMember, checkEventRegistrationStatus);
 router.post("/event-payment/create-checkout-session", verifyToken, verifyMember, createEventPaymentSession);
 router.post("/events/register/:eventId", verifyToken, verifyMember, registerForEvent);
 

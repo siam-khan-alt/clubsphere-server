@@ -505,6 +505,38 @@ const joinClub = async (req, res) => {
   }
 };
 
+/**
+ * Get member's clubs (member only)
+ */
+const getMemberClubs = async (req, res) => {
+  const userEmail = req.tokenEmail;
+  const { membershipsCollection, clubsCollection } = getCollections();
+
+  try {
+    const memberships = await membershipsCollection
+      .find({ userEmail: userEmail, status: "active" })
+      .toArray();
+
+    const clubIds = memberships.map((membership) => new ObjectId(membership.clubId));
+    const clubs = await clubsCollection
+      .find({ _id: { $in: clubIds } })
+      .toArray();
+
+    const result = memberships.map((membership) => {
+      const club = clubs.find((c) => c._id.toString() === membership.clubId);
+      return {
+        ...membership,
+        clubDetails: club || { clubName: "Unknown Club" },
+      };
+    });
+
+    res.send(result);
+  } catch (error) {
+    console.error("Error fetching member clubs:", error);
+    res.status(500).send({ message: "Failed to fetch member clubs." });
+  }
+};
+
 module.exports = {
   createClub,
   getAdminClubs,
@@ -518,4 +550,5 @@ module.exports = {
   getFeaturedClubs,
   getClubById,
   joinClub,
+  getMemberClubs,
 };
