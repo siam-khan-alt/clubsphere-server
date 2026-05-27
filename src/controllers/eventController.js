@@ -1,9 +1,10 @@
 const { ObjectId } = require("mongodb");
-const { getCollections, stripe } = require("../config");
+const { getCollections, stripe, startSession } = require("../config");
 const logger = require("../config/logger");
 const { notifyEventRegistration } = require("./notificationController");
 const emailService = require("../utils/emailService");
 const { generateEventICS } = require("../utils/calendarService");
+const { deleteEventCascade } = require("../utils/cascadeDeleteService");
 
 /**
  * Get manager's events (manager only)
@@ -133,16 +134,23 @@ const createEvent = async (req, res) => {
       updatedAt: new Date(),
     };
 
-    const result = await eventsCollection.insertOne(newEvent);
+    const dbSession = await startSession();
+    try {
+      await dbSession.withTransaction(async () => {
+        const result = await eventsCollection.insertOne(newEvent, { session: dbSession });
 
-    await clubsCollection.updateOne(
-      { _id: new ObjectId(clubId) },
-      { $inc: { eventsCount: 1 } }
-    );
+        await clubsCollection.updateOne(
+          { _id: new ObjectId(clubId) },
+          { $inc: { eventsCount: 1 } },
+          { session: dbSession }
+        );
+      });
+    } finally {
+      await dbSession.endSession();
+    }
 
     res.status(201).send({
       message: "Event created successfully.",
-      eventId: result.insertedId,
     });
   } catch (error) {
     logger.error("Event creation error:", error);
@@ -224,7 +232,7 @@ const updateEvent = async (req, res) => {
 const deleteEvent = async (req, res) => {
   const eventId = req.params.id;
   const managerEmail = req.tokenEmail;
-  const { eventsCollection, clubsCollection, eventRegistrationsCollection } = getCollections();
+  const { eventsCollection, clubsCollection } = getCollections();
 
   try {
     const event = await eventsCollection.findOne({
@@ -244,15 +252,16 @@ const deleteEvent = async (req, res) => {
       });
     }
 
-    await eventRegistrationsCollection.deleteMany({ eventId: eventId });
-    await eventsCollection.deleteOne({ _id: new ObjectId(eventId) });
+    const dbSession = await startSession();
+    try {
+      await dbSession.withTransaction(async () => {
+        await deleteEventCascade(eventId, dbSession);
+      });
+    } finally {
+      await dbSession.endSession();
+    }
 
-    await clubsCollection.updateOne(
-      { _id: new ObjectId(event.clubId) },
-      { $inc: { eventsCount: -1 } }
-    );
-
-    res.send({ message: "Event deleted successfully." });
+    res.send({ message: "Event and all related records deleted successfully." });
   } catch (error) {
     logger.error("Event deletion error:", error);
     res

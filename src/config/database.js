@@ -7,6 +7,10 @@ const client = new MongoClient(uri, {
     strict: true,
     deprecationErrors: true,
   },
+  maxPoolSize: 50,
+  minPoolSize: 10,
+  retryWrites: true,
+  retryReads: true,
 });
 
 let db = null;
@@ -45,7 +49,22 @@ const getCollections = () => {
     paymentsCollection: database.collection("payments"),
     eventRegistrationsCollection: database.collection("eventRegistrations"),
     notificationsCollection: database.collection("notifications"),
+    referralsCollection: database.collection("referrals"),
+    achievementsCollection: database.collection("achievements"),
+    userAchievementsCollection: database.collection("userAchievements"),
   };
+};
+
+/**
+ * Start a MongoDB session for transactions
+ * @returns {Promise<ClientSession>} MongoDB session
+ */
+const startSession = async () => {
+  if (!db) {
+    throw new Error("Database not initialized. Call connectDatabase() first.");
+  }
+  const session = client.startSession();
+  return session;
 };
 
 const closeDatabase = async () => {
@@ -59,4 +78,5 @@ module.exports = {
   getCollections,
   closeDatabase,
   client,
+  startSession,
 };

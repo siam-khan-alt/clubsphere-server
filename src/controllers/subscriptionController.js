@@ -1,5 +1,5 @@
 const { ObjectId } = require("mongodb");
-const { getCollections, stripe } = require("../config");
+const { getCollections, stripe, startSession } = require("../config");
 const logger = require("../config/logger");
 
 /**
@@ -101,19 +101,27 @@ const handleSubscriptionSuccess = async (req, res) => {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
-    // Update club with subscription details
-    await clubsCollection.updateOne(
-      { _id: new ObjectId(clubId) },
-      {
-        $set: {
-          subscriptionPlan: planId,
-          subscriptionStatus: "active",
-          subscriptionExpiresAt: expiresAt,
-          stripeSubscriptionId: session.subscription,
-          updatedAt: new Date(),
-        },
-      }
-    );
+    const dbSession = await startSession();
+    try {
+      await dbSession.withTransaction(async () => {
+        // Update club with subscription details atomically
+        await clubsCollection.updateOne(
+          { _id: new ObjectId(clubId) },
+          {
+            $set: {
+              subscriptionPlan: planId,
+              subscriptionStatus: "active",
+              subscriptionExpiresAt: expiresAt,
+              stripeSubscriptionId: session.subscription,
+              updatedAt: new Date(),
+            },
+          },
+          { session: dbSession }
+        );
+      });
+    } finally {
+      await dbSession.endSession();
+    }
 
     res.send({
       message: "Subscription activated successfully",
@@ -188,17 +196,25 @@ const cancelSubscription = async (req, res) => {
     // Cancel Stripe subscription
     await stripe.subscriptions.cancel(club.stripeSubscriptionId);
 
-    // Update club subscription status
-    await clubsCollection.updateOne(
-      { _id: new ObjectId(clubId) },
-      {
-        $set: {
-          subscriptionStatus: "cancelled",
-          subscriptionExpiresAt: club.subscriptionExpiresAt, // Keep existing expiration
-          updatedAt: new Date(),
-        },
-      }
-    );
+    const dbSession = await startSession();
+    try {
+      await dbSession.withTransaction(async () => {
+        // Update club subscription status atomically
+        await clubsCollection.updateOne(
+          { _id: new ObjectId(clubId) },
+          {
+            $set: {
+              subscriptionStatus: "cancelled",
+              subscriptionExpiresAt: club.subscriptionExpiresAt, // Keep existing expiration
+              updatedAt: new Date(),
+            },
+          },
+          { session: dbSession }
+        );
+      });
+    } finally {
+      await dbSession.endSession();
+    }
 
     res.send({ message: "Subscription cancelled successfully" });
   } catch (error) {

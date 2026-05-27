@@ -1,7 +1,8 @@
 const { ObjectId } = require("mongodb");
-const { getCollections, getFirebaseAdmin } = require("../config");
+const { getCollections, getFirebaseAdmin, startSession } = require("../config");
 const logger = require("../config/logger");
 const emailService = require("../utils/emailService");
+const { deleteUserCascade } = require("../utils/cascadeDeleteService");
 
 const admin = getFirebaseAdmin();
 
@@ -193,7 +194,6 @@ const updateUserRole = async (req, res) => {
  */
 const deleteUser = async (req, res) => {
   const { email } = req.params;
-  const { usersCollection } = getCollections();
 
   try {
     const userToDelete = await usersCollection.findOne({ email });
@@ -204,33 +204,40 @@ const deleteUser = async (req, res) => {
         .send({ message: "User not found in database." });
     }
 
-    const firebaseUser = await admin.auth().getUserByEmail(email);
-    await admin.auth().deleteUser(firebaseUser.uid);
+    // Delete from Firebase
+    try {
+      const firebaseUser = await admin.auth().getUserByEmail(email);
+      await admin.auth().deleteUser(firebaseUser.uid);
+    } catch (firebaseError) {
+      if (
+        firebaseError.code === "auth/user-not-found" ||
+        firebaseError.errorInfo?.code === "auth/user-not-found"
+      ) {
+        logger.warn(`Firebase user not found for ${email}, continuing with DB deletion`);
+      } else {
+        throw firebaseError;
+      }
+    }
 
-    const deleteResult = await usersCollection.deleteOne({ email });
+    // Cascade delete from MongoDB with transaction
+    const session = await startSession();
+    try {
+      await session.withTransaction(async () => {
+        const result = await deleteUserCascade(email, session);
 
-    if (deleteResult.deletedCount === 0) {
-      return res
-        .status(500)
-        .send({ message: "Failed to delete user from database." });
+        if (result.deletedCount === 0) {
+          throw new Error("User not found or already deleted.");
+        }
+      });
+    } finally {
+      await session.endSession();
     }
 
     res.send({
-      message: `${email} deleted successfully from Firebase and DB.`,
+      message: `${email} deleted successfully from Firebase and DB with all related records.`,
     });
   } catch (error) {
     logger.error("Delete user error:", error);
-
-    if (
-      error.code === "auth/user-not-found" ||
-      error.errorInfo?.code === "auth/user-not-found"
-    ) {
-      await usersCollection.deleteOne({ email });
-      return res.json({
-        message: `${email} deleted from DB (was missing in Firebase).`,
-      });
-    }
-
     res.status(500).send({
       message: "Failed to delete user. Check console for details.",
     });

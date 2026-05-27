@@ -1,8 +1,9 @@
 const { ObjectId } = require("mongodb");
-const { getCollections } = require("../config");
+const { getCollections, startSession } = require("../config");
 const logger = require("../config/logger");
 const { notifyClubJoin, notifyMembershipStatusChange } = require("./notificationController");
 const emailService = require("../utils/emailService");
+const { deleteClubCascade } = require("../utils/cascadeDeleteService");
 
 /**
  * Create a new club (manager only)
@@ -135,7 +136,6 @@ const updateClubStatus = async (req, res) => {
  */
 const deleteAdminClub = async (req, res) => {
   const clubId = req.params.clubId;
-  const { clubsCollection } = getCollections();
 
   if (!clubId) {
     return res
@@ -143,26 +143,27 @@ const deleteAdminClub = async (req, res) => {
       .send({ message: "Club ID is required for deletion." });
   }
 
+  const session = await startSession();
+
   try {
-    const result = await clubsCollection.deleteOne({
-      _id: new ObjectId(clubId),
+    await session.withTransaction(async () => {
+      const result = await deleteClubCascade(clubId, session);
+
+      if (result.deletedCount === 0) {
+        throw new Error("Club not found or already deleted.");
+      }
     });
 
-    if (result.deletedCount === 0) {
-      return res
-        .status(404)
-        .send({ message: "Club not found or already deleted." });
-    }
-
     res.send({
-      message: "Club deleted successfully.",
-      deletedCount: result.deletedCount,
+      message: "Club and all related records deleted successfully.",
     });
   } catch (error) {
     logger.error("Admin club deletion error:", error);
     res
       .status(500)
       .send({ message: "Failed to delete club due to server error." });
+  } finally {
+    await session.endSession();
   }
 };
 
@@ -292,22 +293,35 @@ const deleteClub = async (req, res) => {
   const managerEmail = req.tokenEmail;
   const { clubsCollection } = getCollections();
 
+  // Verify ownership first
+  const club = await clubsCollection.findOne({
+    _id: new ObjectId(clubId),
+    managerEmail: managerEmail,
+  });
+
+  if (!club) {
+    return res.status(404).send({
+      message: "Club not found or you are not authorized to delete it.",
+    });
+  }
+
+  const session = await startSession();
+
   try {
-    const result = await clubsCollection.deleteOne({
-      _id: new ObjectId(clubId),
-      managerEmail: managerEmail,
+    await session.withTransaction(async () => {
+      const result = await deleteClubCascade(clubId, session);
+
+      if (result.deletedCount === 0) {
+        throw new Error("Club not found or already deleted.");
+      }
     });
 
-    if (result.deletedCount === 0) {
-      return res.status(404).send({
-        message: "Club not found or you are not authorized to delete it.",
-      });
-    }
-
-    res.send({ message: "Club deleted successfully." });
+    res.send({ message: "Club and all related records deleted successfully." });
   } catch (error) {
     logger.error("Club deletion error:", error);
     res.status(500).send({ message: "Failed to delete club." });
+  } finally {
+    await session.endSession();
   }
 };
 

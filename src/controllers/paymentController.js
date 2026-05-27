@@ -1,5 +1,5 @@
 const { ObjectId } = require("mongodb");
-const { getCollections, stripe } = require("../config");
+const { getCollections, stripe, startSession } = require("../config");
 const logger = require("../config/logger");
 
 /**
@@ -104,6 +104,9 @@ const handleStripeWebhook = async (req, res) => {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
+  logger.info(`Received Stripe webhook event: ${event.type}`);
+
+  // Handle checkout.session.completed (existing logic)
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
     const metadata = session.metadata;
@@ -114,40 +117,47 @@ const handleStripeWebhook = async (req, res) => {
         const userEmail = metadata.userEmail;
         const amount = parseFloat(metadata.amount);
 
-        const existingMembership = await membershipsCollection.findOne({
-          clubId: clubId,
-          userEmail: userEmail,
-          status: "active",
-        });
+        const dbSession = await startSession();
+        try {
+          await dbSession.withTransaction(async () => {
+            const existingMembership = await membershipsCollection.findOne(
+              { clubId: clubId, userEmail: userEmail, status: "active" },
+              { session: dbSession }
+            );
 
-        if (!existingMembership) {
-          const newMembership = {
-            userEmail: userEmail,
-            clubId: clubId,
-            status: "active",
-            paymentId: session.payment_intent,
-            joinedAt: new Date(),
-            expiresAt: null,
-          };
-          await membershipsCollection.insertOne(newMembership);
+            if (!existingMembership) {
+              const newMembership = {
+                userEmail: userEmail,
+                clubId: clubId,
+                status: "active",
+                paymentId: session.payment_intent,
+                joinedAt: new Date(),
+                expiresAt: null,
+              };
+              await membershipsCollection.insertOne(newMembership, { session: dbSession });
 
-          await clubsCollection.updateOne(
-            { _id: new ObjectId(clubId) },
-            { $addToSet: { members: userEmail } }
-          );
+              await clubsCollection.updateOne(
+                { _id: new ObjectId(clubId) },
+                { $addToSet: { members: userEmail } },
+                { session: dbSession }
+              );
+            }
+
+            const paymentRecord = {
+              userEmail: userEmail,
+              clubId: clubId,
+              amount: amount,
+              paymentId: session.payment_intent,
+              sessionId: session.id,
+              status: "completed",
+              type: "membership",
+              createdAt: new Date(),
+            };
+            await paymentsCollection.insertOne(paymentRecord, { session: dbSession });
+          });
+        } finally {
+          await dbSession.endSession();
         }
-
-        const paymentRecord = {
-          userEmail: userEmail,
-          clubId: clubId,
-          amount: amount,
-          paymentId: session.payment_intent,
-          sessionId: session.id,
-          status: "completed",
-          type: "membership",
-          createdAt: new Date(),
-        };
-        await paymentsCollection.insertOne(paymentRecord);
 
         logger.info(
           `Membership payment processed for ${userEmail} in club ${clubId}`
@@ -162,44 +172,50 @@ const handleStripeWebhook = async (req, res) => {
         const amount = parseFloat(metadata.amount);
         const clubId = metadata.clubId;
 
-        const existingRegistration =
-          await eventRegistrationsCollection.findOne({
-            eventId: eventId,
-            userEmail: userEmail,
-            status: "registered",
+        const dbSession = await startSession();
+        try {
+          await dbSession.withTransaction(async () => {
+            const existingRegistration = await eventRegistrationsCollection.findOne(
+              { eventId: eventId, userEmail: userEmail, status: "registered" },
+              { session: dbSession }
+            );
+
+            if (!existingRegistration) {
+              const newRegistration = {
+                userEmail: userEmail,
+                eventId: eventId,
+                clubId: clubId,
+                status: "registered",
+                amount: amount,
+                paymentStatus: "paid",
+                paymentId: session.payment_intent,
+                registeredAt: new Date(),
+              };
+              await eventRegistrationsCollection.insertOne(newRegistration, { session: dbSession });
+
+              await eventsCollection.updateOne(
+                { _id: new ObjectId(eventId) },
+                { $inc: { registrationCount: 1 } },
+                { session: dbSession }
+              );
+            }
+
+            const paymentRecord = {
+              userEmail: userEmail,
+              eventId: eventId,
+              clubId: clubId,
+              amount: amount,
+              paymentId: session.payment_intent,
+              sessionId: session.id,
+              status: "completed",
+              type: "event",
+              createdAt: new Date(),
+            };
+            await paymentsCollection.insertOne(paymentRecord, { session: dbSession });
           });
-
-        if (!existingRegistration) {
-          const newRegistration = {
-            userEmail: userEmail,
-            eventId: eventId,
-            clubId: clubId,
-            status: "registered",
-            amount: amount,
-            paymentStatus: "paid",
-            paymentId: session.payment_intent,
-            registeredAt: new Date(),
-          };
-          await eventRegistrationsCollection.insertOne(newRegistration);
-
-          await eventsCollection.updateOne(
-            { _id: new ObjectId(eventId) },
-            { $inc: { registrationCount: 1 } }
-          );
+        } finally {
+          await dbSession.endSession();
         }
-
-        const paymentRecord = {
-          userEmail: userEmail,
-          eventId: eventId,
-          clubId: clubId,
-          amount: amount,
-          paymentId: session.payment_intent,
-          sessionId: session.id,
-          status: "completed",
-          type: "event",
-          createdAt: new Date(),
-        };
-        await paymentsCollection.insertOne(paymentRecord);
 
         logger.info(
           `Event payment processed for ${userEmail} for event ${eventId}`
@@ -207,6 +223,157 @@ const handleStripeWebhook = async (req, res) => {
       } catch (error) {
         logger.error("Error processing event webhook:", error);
       }
+    }
+  }
+
+  // Handle invoice.payment_failed
+  if (event.type === "invoice.payment_failed") {
+    const invoice = event.data.object;
+    const subscriptionId = invoice.subscription;
+
+    try {
+      const club = await clubsCollection.findOne({ stripeSubscriptionId: subscriptionId });
+
+      if (club) {
+        logger.warn(`Payment failed for club ${club._id}, subscription ${subscriptionId}`);
+
+        // Update club subscription status to indicate payment failure
+        await clubsCollection.updateOne(
+          { _id: club._id },
+          {
+            $set: {
+              subscriptionStatus: "payment_failed",
+              lastPaymentFailedAt: new Date(),
+              updatedAt: new Date(),
+            },
+          }
+        );
+
+        // TODO: Send notification to manager about payment failure
+        logger.info(`Updated club ${club._id} status to payment_failed`);
+      }
+    } catch (error) {
+      logger.error("Error processing invoice.payment_failed webhook:", error);
+    }
+  }
+
+  // Handle customer.subscription.deleted
+  if (event.type === "customer.subscription.deleted") {
+    const subscription = event.data.object;
+    const subscriptionId = subscription.id;
+
+    try {
+      const club = await clubsCollection.findOne({ stripeSubscriptionId: subscriptionId });
+
+      if (club) {
+        logger.info(`Subscription ${subscriptionId} deleted for club ${club._id}`);
+
+        const dbSession = await startSession();
+        try {
+          await dbSession.withTransaction(async () => {
+            await clubsCollection.updateOne(
+              { _id: club._id },
+              {
+                $set: {
+                  subscriptionStatus: "cancelled",
+                  subscriptionExpiresAt: new Date(), // Set expiration to now
+                  stripeSubscriptionId: null,
+                  updatedAt: new Date(),
+                },
+              },
+              { session: dbSession }
+            );
+          });
+        } finally {
+          await dbSession.endSession();
+        }
+
+        logger.info(`Updated club ${club._id} subscription status to cancelled`);
+      }
+    } catch (error) {
+      logger.error("Error processing customer.subscription.deleted webhook:", error);
+    }
+  }
+
+  // Handle invoice.payment_succeeded
+  if (event.type === "invoice.payment_succeeded") {
+    const invoice = event.data.object;
+    const subscriptionId = invoice.subscription;
+
+    try {
+      const club = await clubsCollection.findOne({ stripeSubscriptionId: subscriptionId });
+
+      if (club) {
+        logger.info(`Payment succeeded for club ${club._id}, subscription ${subscriptionId}`);
+
+        // Calculate new expiration date (30 days from now)
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+
+        const dbSession = await startSession();
+        try {
+          await dbSession.withTransaction(async () => {
+            await clubsCollection.updateOne(
+              { _id: club._id },
+              {
+                $set: {
+                  subscriptionStatus: "active",
+                  subscriptionExpiresAt: expiresAt,
+                  lastPaymentSucceededAt: new Date(),
+                  updatedAt: new Date(),
+                },
+              },
+              { session: dbSession }
+            );
+          });
+        } finally {
+          await dbSession.endSession();
+        }
+
+        logger.info(`Extended subscription for club ${club._id} to ${expiresAt}`);
+      }
+    } catch (error) {
+      logger.error("Error processing invoice.payment_succeeded webhook:", error);
+    }
+  }
+
+  // Handle customer.subscription.updated
+  if (event.type === "customer.subscription.updated") {
+    const subscription = event.data.object;
+    const subscriptionId = subscription.id;
+
+    try {
+      const club = await clubsCollection.findOne({ stripeSubscriptionId: subscriptionId });
+
+      if (club) {
+        logger.info(`Subscription ${subscriptionId} updated for club ${club._id}`);
+
+        // Extract plan from subscription metadata or items
+        const planId = subscription.metadata?.planId || "basic";
+
+        const dbSession = await startSession();
+        try {
+          await dbSession.withTransaction(async () => {
+            await clubsCollection.updateOne(
+              { _id: club._id },
+              {
+                $set: {
+                  subscriptionPlan: planId,
+                  subscriptionStatus: subscription.status === "active" ? "active" : "inactive",
+                  updatedAt: new Date(),
+                },
+              },
+              { session: dbSession }
+            );
+          });
+        } finally {
+          await dbSession.endSession();
+        }
+
+        logger.info(`Updated club ${club._id} subscription plan to ${planId}`);
+      }
+    } catch (error) {
+      logger.error("Error processing customer.subscription.updated webhook:", error);
     }
   }
 

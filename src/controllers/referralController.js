@@ -1,5 +1,5 @@
 const { ObjectId } = require("mongodb");
-const { getCollections } = require("../config");
+const { getCollections, startSession } = require("../config");
 const logger = require("../config/logger");
 
 /**
@@ -123,57 +123,76 @@ const allocateReferralCredits = async (req, res) => {
     const { userEmail, paymentAmount } = req.body;
     const { referralsCollection } = getCollections();
 
-    // Find referral where this user was invited
+    const dbSession = await startSession();
+    try {
+      await dbSession.withTransaction(async () => {
+        // Find referral where this user was invited
+        const referral = await referralsCollection.findOne(
+          { "invitedUsers.email": userEmail },
+          { session: dbSession }
+        );
+
+        if (!referral) {
+          throw new Error("No referral found for this user");
+        }
+
+        // Check if credits already allocated
+        const invitedUser = referral.invitedUsers.find(
+          (user) => user.email === userEmail
+        );
+
+        if (invitedUser.hasMadeFirstPayment) {
+          throw new Error("Credits already allocated");
+        }
+
+        // Calculate credits (10% of payment amount, max $10)
+        const creditAmount = Math.min(paymentAmount * 0.1, 10);
+
+        // Update referral atomically
+        await referralsCollection.updateOne(
+          {
+            _id: referral._id,
+            "invitedUsers.email": userEmail,
+          },
+          {
+            $set: {
+              "invitedUsers.$.hasMadeFirstPayment": true,
+              "invitedUsers.$.firstPaymentAmount": paymentAmount,
+              "invitedUsers.$.creditsEarned": creditAmount,
+              "invitedUsers.$.paymentDate": new Date(),
+              updatedAt: new Date(),
+            },
+            $inc: {
+              successfulReferrals: 1,
+              creditsEarned: creditAmount,
+            },
+          },
+          { session: dbSession }
+        );
+      });
+    } finally {
+      await dbSession.endSession();
+    }
+
+    // Fetch updated referral for response
     const referral = await referralsCollection.findOne({
       "invitedUsers.email": userEmail,
     });
-
-    if (!referral) {
-      return res.send({ message: "No referral found for this user" });
-    }
-
-    // Check if credits already allocated
-    const invitedUser = referral.invitedUsers.find(
-      (user) => user.email === userEmail
-    );
-
-    if (invitedUser.hasMadeFirstPayment) {
-      return res.send({ message: "Credits already allocated" });
-    }
-
-    // Calculate credits (10% of payment amount, max $10)
     const creditAmount = Math.min(paymentAmount * 0.1, 10);
-
-    // Update referral
-    await referralsCollection.updateOne(
-      {
-        _id: referral._id,
-        "invitedUsers.email": userEmail,
-      },
-      {
-        $set: {
-          "invitedUsers.$.hasMadeFirstPayment": true,
-          "invitedUsers.$.firstPaymentAmount": paymentAmount,
-          "invitedUsers.$.creditsEarned": creditAmount,
-          "invitedUsers.$.paymentDate": new Date(),
-        },
-        $inc: {
-          successfulReferrals: 1,
-          creditsEarned: creditAmount,
-        },
-        $set: {
-          updatedAt: new Date(),
-        },
-      }
-    );
 
     res.send({
       message: "Referral credits allocated successfully",
       creditAmount: creditAmount,
-      totalCredits: referral.creditsEarned + creditAmount,
+      totalCredits: referral.creditsEarned,
     });
   } catch (error) {
     logger.error("Error allocating referral credits:", error);
+    if (error.message === "No referral found for this user") {
+      return res.send({ message: "No referral found for this user" });
+    }
+    if (error.message === "Credits already allocated") {
+      return res.send({ message: "Credits already allocated" });
+    }
     res.status(500).send({ message: "Failed to allocate referral credits." });
   }
 };
