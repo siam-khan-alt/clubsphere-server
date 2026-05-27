@@ -485,6 +485,9 @@ const joinClub = async (req, res) => {
       endDate: null,
       paymentId: "FREE_JOIN",
       joinedAt: new Date(),
+      subscriptionPlan: club.subscriptionPlan || "basic",
+      subscriptionStatus: club.subscriptionStatus || "inactive",
+      subscriptionExpiresAt: club.subscriptionExpiresAt || null,
     };
     await membershipsCollection.insertOne(newMembership);
 

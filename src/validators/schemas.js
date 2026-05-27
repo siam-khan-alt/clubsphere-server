@@ -214,6 +214,38 @@ const paymentSchemas = {
 };
 
 /**
+ * Subscription-related validation schemas
+ */
+const subscriptionSchemas = {
+  createCheckout: z.object({
+    body: z.object({
+      clubId: z.string().min(1, "Club ID is required"),
+      planId: z.enum(["basic", "pro", "enterprise"], {
+        errorMap: () => ({ message: "Plan must be basic, pro, or enterprise" }),
+      }),
+    }),
+  }),
+};
+
+/**
+ * Referral-related validation schemas
+ */
+const referralSchemas = {
+  trackSignup: z.object({
+    body: z.object({
+      referralCode: z.string().min(1, "Referral code is required"),
+    }),
+  }),
+
+  allocateCredits: z.object({
+    body: z.object({
+      userEmail: z.string().email("Invalid email address"),
+      paymentAmount: z.number().positive("Payment amount must be positive"),
+    }),
+  }),
+};
+
+/**
  * Query validation schemas
  */
 const querySchemas = {
@@ -231,5 +263,7 @@ module.exports = {
   clubSchemas,
   eventSchemas,
   paymentSchemas,
+  subscriptionSchemas,
+  referralSchemas,
   querySchemas,
 };

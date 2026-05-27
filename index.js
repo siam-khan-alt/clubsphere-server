@@ -8,6 +8,7 @@ const { errorHandler, notFoundHandler } = require("./src/middleware/errorHandler
 const logger = require("./src/config/logger");
 const emailService = require("./src/utils/emailService");
 const { startMembershipExpirationJob } = require("./src/jobs/membershipExpirationJob");
+const { startAchievementJob } = require("./src/jobs/achievementJob");
 const userRoutes = require("./src/routes/userRoutes");
 const clubRoutes = require("./src/routes/clubRoutes");
 const eventRoutes = require("./src/routes/eventRoutes");
@@ -15,6 +16,9 @@ const { router: paymentRoutes, webhookRouter } = require("./src/routes/paymentRo
 const adminRoutes = require("./src/routes/adminRoutes");
 const managerRoutes = require("./src/routes/managerRoutes");
 const notificationRoutes = require("./src/routes/notificationRoutes");
+const subscriptionRoutes = require("./src/routes/subscriptionRoutes");
+const referralRoutes = require("./src/routes/referralRoutes");
+const achievementRoutes = require("./src/routes/achievementRoutes");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -66,6 +70,15 @@ app.use("/manager", generalLimiter, managerRoutes);
 logger.info("- /notifications -> notificationRoutes (general limiter)");
 app.use("/notifications", generalLimiter, notificationRoutes);
 
+logger.info("- /subscriptions -> subscriptionRoutes (general limiter)");
+app.use("/subscriptions", generalLimiter, subscriptionRoutes);
+
+logger.info("- /referrals -> referralRoutes (general limiter)");
+app.use("/referrals", generalLimiter, referralRoutes);
+
+logger.info("- /achievements -> achievementRoutes (general limiter)");
+app.use("/achievements", generalLimiter, achievementRoutes);
+
 // Mount webhook with raw body parsing for Stripe signature verification
 logger.info("- /webhook -> webhookRouter (webhook limiter)");
 app.use("/webhook", express.raw({ type: "application/json" }), webhookLimiter, webhookRouter);
@@ -91,6 +104,9 @@ async function run() {
 
     // Start membership expiration job
     startMembershipExpirationJob();
+
+    // Start achievement job
+    startAchievementJob();
 
     app.listen(port, () => {
       logger.info(`ClubSphere Server listening on port ${port}`);

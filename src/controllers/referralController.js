@@ -1,0 +1,222 @@
+const { ObjectId } = require("mongodb");
+const { getCollections } = require("../config");
+const logger = require("../config/logger");
+
+/**
+ * Generate a unique referral code
+ */
+const generateReferralCode = () => {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let code = "";
+  for (let i = 0; i < 8; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+};
+
+/**
+ * Get or create referral code for user
+ */
+const getReferralCode = async (req, res) => {
+  try {
+    const userEmail = req.tokenEmail;
+    const { referralsCollection } = getCollections();
+
+    let referral = await referralsCollection.findOne({
+      inviterEmail: userEmail,
+    });
+
+    if (!referral) {
+      const code = generateReferralCode();
+      referral = {
+        inviterEmail: userEmail,
+        referralCode: code,
+        invitedUsers: [],
+        totalReferrals: 0,
+        successfulReferrals: 0,
+        creditsEarned: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      await referralsCollection.insertOne(referral);
+    }
+
+    res.send({
+      referralCode: referral.referralCode,
+      totalReferrals: referral.totalReferrals,
+      successfulReferrals: referral.successfulReferrals,
+      creditsEarned: referral.creditsEarned,
+      referralLink: `${process.env.CLIENT_URL || "http://localhost:5173"}/register?ref=${referral.referralCode}`,
+    });
+  } catch (error) {
+    logger.error("Error getting referral code:", error);
+    res.status(500).send({ message: "Failed to get referral code." });
+  }
+};
+
+/**
+ * Track referral sign-up
+ */
+const trackReferralSignup = async (req, res) => {
+  try {
+    const { referralCode } = req.body;
+    const userEmail = req.tokenEmail;
+    const { referralsCollection, usersCollection } = getCollections();
+
+    if (!referralCode) {
+      return res.send({ message: "No referral code provided" });
+    }
+
+    // Find referral by code
+    const referral = await referralsCollection.findOne({
+      referralCode: referralCode,
+    });
+
+    if (!referral) {
+      return res.status(400).send({ message: "Invalid referral code" });
+    }
+
+    // Check if user already referred
+    const alreadyReferred = referral.invitedUsers.some(
+      (user) => user.email === userEmail
+    );
+
+    if (alreadyReferred) {
+      return res.status(400).send({ message: "You have already used this referral code" });
+    }
+
+    // Add user to invited users
+    await referralsCollection.updateOne(
+      { _id: referral._id },
+      {
+        $push: {
+          invitedUsers: {
+            email: userEmail,
+            joinedAt: new Date(),
+            hasMadeFirstPayment: false,
+          },
+        },
+        $inc: {
+          totalReferrals: 1,
+        },
+        $set: {
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    res.send({
+      message: "Referral tracked successfully",
+      referralCode: referralCode,
+    });
+  } catch (error) {
+    logger.error("Error tracking referral signup:", error);
+    res.status(500).send({ message: "Failed to track referral signup." });
+  }
+};
+
+/**
+ * Allocate referral credits after first payment
+ */
+const allocateReferralCredits = async (req, res) => {
+  try {
+    const { userEmail, paymentAmount } = req.body;
+    const { referralsCollection } = getCollections();
+
+    // Find referral where this user was invited
+    const referral = await referralsCollection.findOne({
+      "invitedUsers.email": userEmail,
+    });
+
+    if (!referral) {
+      return res.send({ message: "No referral found for this user" });
+    }
+
+    // Check if credits already allocated
+    const invitedUser = referral.invitedUsers.find(
+      (user) => user.email === userEmail
+    );
+
+    if (invitedUser.hasMadeFirstPayment) {
+      return res.send({ message: "Credits already allocated" });
+    }
+
+    // Calculate credits (10% of payment amount, max $10)
+    const creditAmount = Math.min(paymentAmount * 0.1, 10);
+
+    // Update referral
+    await referralsCollection.updateOne(
+      {
+        _id: referral._id,
+        "invitedUsers.email": userEmail,
+      },
+      {
+        $set: {
+          "invitedUsers.$.hasMadeFirstPayment": true,
+          "invitedUsers.$.firstPaymentAmount": paymentAmount,
+          "invitedUsers.$.creditsEarned": creditAmount,
+          "invitedUsers.$.paymentDate": new Date(),
+        },
+        $inc: {
+          successfulReferrals: 1,
+          creditsEarned: creditAmount,
+        },
+        $set: {
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    res.send({
+      message: "Referral credits allocated successfully",
+      creditAmount: creditAmount,
+      totalCredits: referral.creditsEarned + creditAmount,
+    });
+  } catch (error) {
+    logger.error("Error allocating referral credits:", error);
+    res.status(500).send({ message: "Failed to allocate referral credits." });
+  }
+};
+
+/**
+ * Get referral stats for user
+ */
+const getReferralStats = async (req, res) => {
+  try {
+    const userEmail = req.tokenEmail;
+    const { referralsCollection } = getCollections();
+
+    const referral = await referralsCollection.findOne({
+      inviterEmail: userEmail,
+    });
+
+    if (!referral) {
+      return res.send({
+        referralCode: null,
+        totalReferrals: 0,
+        successfulReferrals: 0,
+        creditsEarned: 0,
+        invitedUsers: [],
+      });
+    }
+
+    res.send({
+      referralCode: referral.referralCode,
+      totalReferrals: referral.totalReferrals,
+      successfulReferrals: referral.successfulReferrals,
+      creditsEarned: referral.creditsEarned,
+      invitedUsers: referral.invitedUsers,
+      referralLink: `${process.env.CLIENT_URL || "http://localhost:5173"}/register?ref=${referral.referralCode}`,
+    });
+  } catch (error) {
+    logger.error("Error getting referral stats:", error);
+    res.status(500).send({ message: "Failed to get referral stats." });
+  }
+};
+
+module.exports = {
+  getReferralCode,
+  trackReferralSignup,
+  allocateReferralCredits,
+  getReferralStats,
+};
