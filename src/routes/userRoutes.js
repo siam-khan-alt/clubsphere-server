@@ -8,13 +8,15 @@ const {
   getMemberStatsAndUpcomingEvents,
 } = require("../controllers/userController");
 const { verifyToken, verifyMember } = require("../middleware/authMiddleware");
+const validateRequest = require("../middleware/validateRequest");
+const { userSchemas } = require("../validators/schemas");
 
 // Public routes
-router.post("/register", registerUser);
-router.post("/google-login", googleLogin);
+router.post("/register", validateRequest(userSchemas.register), registerUser);
+router.post("/google-login", validateRequest(userSchemas.googleLogin), googleLogin);
 
 // Authenticated routes
-router.patch("/update", verifyToken, updateUser);
+router.patch("/update", verifyToken, validateRequest(userSchemas.updateUser), updateUser);
 router.get("/role", verifyToken, getUserRole);
 
 // Member only routes

@@ -1,5 +1,6 @@
 const { ObjectId } = require("mongodb");
 const { getCollections } = require("../config");
+const logger = require("../config/logger");
 
 /**
  * Create a new club (manager only)
@@ -62,7 +63,7 @@ const createClub = async (req, res) => {
       club: newClub,
     });
   } catch (error) {
-    console.error("Club creation error:", error);
+    logger.error("Club creation error:", error);
     res.status(500).send({
       message: "Failed to submit club request due to server error.",
     });
@@ -86,7 +87,7 @@ const getAdminClubs = async (req, res) => {
 
     res.send(refinedClubs);
   } catch (error) {
-    console.error("Failed to fetch clubs for admin:", error);
+    logger.error("Failed to fetch clubs for admin:", error);
     res.status(500).send({ message: "Could not retrieve club list." });
   }
 };
@@ -120,7 +121,7 @@ const updateClubStatus = async (req, res) => {
       modifiedCount: result.modifiedCount,
     });
   } catch (error) {
-    console.error("Admin club status update error:", error);
+    logger.error("Admin club status update error:", error);
     res.status(500).send({
       message: "Failed to update club status due to server error.",
     });
@@ -156,7 +157,7 @@ const deleteAdminClub = async (req, res) => {
       deletedCount: result.deletedCount,
     });
   } catch (error) {
-    console.error("Admin club deletion error:", error);
+    logger.error("Admin club deletion error:", error);
     res
       .status(500)
       .send({ message: "Failed to delete club due to server error." });
@@ -206,6 +207,7 @@ const getPopularClubs = async (req, res) => {
 
     res.send(popularClubs);
   } catch (error) {
+    logger.error("Error fetching popular managers:", error);
     res.status(500).send({ message: "Error fetching popular managers" });
   }
 };
@@ -231,7 +233,7 @@ const getManagerClubs = async (req, res) => {
 
     res.send(refinedClubs);
   } catch (error) {
-    console.error("Failed to fetch clubs for manager:", error);
+    logger.error("Failed to fetch clubs for manager:", error);
     res
       .status(500)
       .send({ message: "Could not retrieve manager club list." });
@@ -275,7 +277,7 @@ const updateClub = async (req, res) => {
 
     res.send({ message: "Club details updated successfully." });
   } catch (error) {
-    console.error("Club update error:", error);
+    logger.error("Club update error:", error);
     res.status(500).send({ message: "Failed to update club." });
   }
 };
@@ -302,7 +304,7 @@ const deleteClub = async (req, res) => {
 
     res.send({ message: "Club deleted successfully." });
   } catch (error) {
-    console.error("Club deletion error:", error);
+    logger.error("Club deletion error:", error);
     res.status(500).send({ message: "Failed to delete club." });
   }
 };
@@ -353,7 +355,7 @@ const getPublicClubs = async (req, res) => {
 
     res.send(clubs);
   } catch (error) {
-    console.error("Public club listing error:", error);
+    logger.error("Public club listing error:", error);
     res
       .status(500)
       .send({ message: "Failed to fetch clubs due to server error." });
@@ -393,7 +395,7 @@ const getFeaturedClubs = async (req, res) => {
 
     res.status(200).send(featuredClubs);
   } catch (error) {
-    console.error("Public club listing error:", error);
+    logger.error("Public club listing error:", error);
     res
       .status(500)
       .send({ message: "Failed to fetch clubs due to server error." });
@@ -489,7 +491,7 @@ const joinClub = async (req, res) => {
     );
 
     if (updateResult.modifiedCount === 0) {
-      console.warn(
+      logger.warn(
         `Club ${clubId} members array was likely already updated for ${userEmail}.`
       );
     }
@@ -498,7 +500,7 @@ const joinClub = async (req, res) => {
       .status(201)
       .send({ message: "Successfully joined the club (Free Membership)." });
   } catch (error) {
-    console.error("Club joining failed (Free):", error);
+    logger.error("Club joining failed (Free):", error);
     res.status(500).send({
       message: "Failed to process free join request due to server error.",
     });
@@ -532,7 +534,7 @@ const getMemberClubs = async (req, res) => {
 
     res.send(result);
   } catch (error) {
-    console.error("Error fetching member clubs:", error);
+    logger.error("Error fetching member clubs:", error);
     res.status(500).send({ message: "Failed to fetch member clubs." });
   }
 };
@@ -576,7 +578,7 @@ const getClubMembers = async (req, res) => {
 
     res.send({ clubName: club.clubName, members: result });
   } catch (error) {
-    console.error("Error fetching club members:", error);
+    logger.error("Error fetching club members:", error);
     res.status(500).send({ message: "Failed to fetch club members." });
   }
 };
@@ -623,7 +625,7 @@ const updateMembershipStatus = async (req, res) => {
 
     res.send({ message: `Membership status updated to ${status}.` });
   } catch (error) {
-    console.error("Error updating membership status:", error);
+    logger.error("Error updating membership status:", error);
     res.status(500).send({ message: "Failed to update membership status." });
   }
 };
@@ -671,7 +673,7 @@ const getManagerStats = async (req, res) => {
       approvedClubs,
     });
   } catch (error) {
-    console.error("Error fetching manager stats:", error);
+    logger.error("Error fetching manager stats:", error);
     res.status(500).send({ message: "Failed to fetch manager stats." });
   }
 };

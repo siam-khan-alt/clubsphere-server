@@ -1,5 +1,6 @@
 const { ObjectId } = require("mongodb");
 const { getCollections, stripe } = require("../config");
+const logger = require("../config/logger");
 
 /**
  * Create membership checkout session (member only)
@@ -79,7 +80,7 @@ const createMembershipCheckoutSession = async (req, res) => {
 
     res.send({ url: session.url });
   } catch (error) {
-    console.error("Stripe Membership Checkout Session Error:", error);
+    logger.error("Stripe Membership Checkout Session Error:", error);
     res
       .status(500)
       .send({ message: "Failed to create payment session for membership." });
@@ -99,7 +100,7 @@ const handleStripeWebhook = async (req, res) => {
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
   } catch (err) {
-    console.log(`Webhook Error: ${err.message}`);
+    logger.error(`Webhook Error: ${err.message}`);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
@@ -148,11 +149,11 @@ const handleStripeWebhook = async (req, res) => {
         };
         await paymentsCollection.insertOne(paymentRecord);
 
-        console.log(
+        logger.info(
           `Membership payment processed for ${userEmail} in club ${clubId}`
         );
       } catch (error) {
-        console.error("Error processing membership webhook:", error);
+        logger.error("Error processing membership webhook:", error);
       }
     } else if (metadata.type === "event") {
       try {
@@ -200,11 +201,11 @@ const handleStripeWebhook = async (req, res) => {
         };
         await paymentsCollection.insertOne(paymentRecord);
 
-        console.log(
+        logger.info(
           `Event payment processed for ${userEmail} for event ${eventId}`
         );
       } catch (error) {
-        console.error("Error processing event webhook:", error);
+        logger.error("Error processing event webhook:", error);
       }
     }
   }
@@ -249,7 +250,7 @@ const getMemberPayments = async (req, res) => {
 
     res.send(result);
   } catch (error) {
-    console.error("Error fetching member payments:", error);
+    logger.error("Error fetching member payments:", error);
     res.status(500).send({ message: "Failed to fetch payment history." });
   }
 };
@@ -281,7 +282,7 @@ const verifyPaymentSuccess = async (req, res) => {
       eventId: payment.eventId,
     });
   } catch (error) {
-    console.error("Error verifying payment:", error);
+    logger.error("Error verifying payment:", error);
     res.status(500).send({ message: "Failed to verify payment." });
   }
 };
@@ -320,7 +321,7 @@ const getAdminPayments = async (req, res) => {
 
     res.send(result);
   } catch (error) {
-    console.error("Error fetching admin payments:", error);
+    logger.error("Error fetching admin payments:", error);
     res.status(500).send({ message: "Failed to fetch payments." });
   }
 };

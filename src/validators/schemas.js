@@ -1,0 +1,235 @@
+const { z } = require("zod");
+
+/**
+ * User-related validation schemas
+ */
+const userSchemas = {
+  register: z.object({
+    body: z.object({
+      name: z.string().min(2, "Name must be at least 2 characters"),
+      email: z.string().email("Invalid email address"),
+      photoURL: z.string().url("Invalid photo URL").optional(),
+    }),
+  }),
+
+  googleLogin: z.object({
+    body: z.object({
+      name: z.string().min(2, "Name must be at least 2 characters"),
+      email: z.string().email("Invalid email address"),
+      photoURL: z.string().url("Invalid photo URL").optional(),
+    }),
+  }),
+
+  updateUser: z.object({
+    body: z.object({
+      email: z.string().email("Invalid email address"),
+      name: z.string().min(2, "Name must be at least 2 characters").optional(),
+      photoURL: z.string().url("Invalid photo URL").optional(),
+    }),
+  }),
+
+  updateRole: z.object({
+    params: z.object({
+      email: z.string().email("Invalid email address"),
+    }),
+    body: z.object({
+      role: z.enum(["admin", "clubManager", "member"], {
+        errorMap: () => ({ message: "Role must be admin, clubManager, or member" }),
+      }),
+    }),
+  }),
+
+  deleteUser: z.object({
+    params: z.object({
+      email: z.string().email("Invalid email address"),
+    }),
+  }),
+};
+
+/**
+ * Club-related validation schemas
+ */
+const clubSchemas = {
+  createClub: z.object({
+    body: z.object({
+      name: z.string().min(2, "Club name must be at least 2 characters"),
+      description: z.string().min(10, "Description must be at least 10 characters"),
+      category: z.enum(["Technology", "Photography", "Sports", "Art"], {
+        errorMap: () => ({ message: "Invalid category" }),
+      }),
+      location: z.string().min(2, "Location must be at least 2 characters"),
+      membershipFee: z.number().nonnegative("Membership fee must be non-negative"),
+      bannerImage: z.string().url("Invalid banner image URL").optional(),
+      meetingSchedule: z.string().optional(),
+    }),
+  }),
+
+  updateClub: z.object({
+    params: z.object({
+      id: z.string().min(1, "Club ID is required"),
+    }),
+    body: z.object({
+      clubName: z.string().min(2, "Club name must be at least 2 characters").optional(),
+      description: z.string().min(10, "Description must be at least 10 characters").optional(),
+      category: z.enum(["Technology", "Photography", "Sports", "Art"]).optional(),
+      location: z.string().min(2, "Location must be at least 2 characters").optional(),
+      membershipFee: z.number().nonnegative("Membership fee must be non-negative").optional(),
+      bannerImage: z.string().url("Invalid banner image URL").optional(),
+    }),
+  }),
+
+  updateClubStatus: z.object({
+    params: z.object({
+      clubId: z.string().min(1, "Club ID is required"),
+    }),
+    body: z.object({
+      status: z.enum(["approved", "rejected"], {
+        errorMap: () => ({ message: "Status must be approved or rejected" }),
+      }),
+    }),
+  }),
+
+  deleteClub: z.object({
+    params: z.object({
+      id: z.string().min(1, "Club ID is required"),
+    }),
+  }),
+
+  joinClub: z.object({
+    params: z.object({
+      id: z.string().min(1, "Club ID is required"),
+    }),
+    body: z.object({
+      paymentStatus: z.string().optional(),
+    }),
+  }),
+
+  getClubById: z.object({
+    params: z.object({
+      id: z.string().min(1, "Club ID is required"),
+    }),
+  }),
+
+  getClubMembers: z.object({
+    params: z.object({
+      clubId: z.string().min(1, "Club ID is required"),
+    }),
+  }),
+};
+
+/**
+ * Event-related validation schemas
+ */
+const eventSchemas = {
+  createEvent: z.object({
+    body: z.object({
+      title: z.string().min(2, "Event title must be at least 2 characters"),
+      description: z.string().min(10, "Description must be at least 10 characters"),
+      date: z.string().refine((val) => !isNaN(Date.parse(val)), {
+        message: "Invalid date format",
+      }),
+      location: z.string().min(2, "Location must be at least 2 characters"),
+      eventFee: z.number().nonnegative("Event fee must be non-negative"),
+      clubId: z.string().min(1, "Club ID is required"),
+      eventImage: z.string().url("Invalid event image URL").optional(),
+    }),
+  }),
+
+  updateEvent: z.object({
+    params: z.object({
+      id: z.string().min(1, "Event ID is required"),
+    }),
+    body: z.object({
+      title: z.string().min(2, "Event title must be at least 2 characters").optional(),
+      description: z.string().min(10, "Description must be at least 10 characters").optional(),
+      date: z.string().refine((val) => !isNaN(Date.parse(val)), {
+        message: "Invalid date format",
+      }).optional(),
+      location: z.string().min(2, "Location must be at least 2 characters").optional(),
+      eventImage: z.string().url("Invalid event image URL").optional(),
+    }),
+  }),
+
+  deleteEvent: z.object({
+    params: z.object({
+      id: z.string().min(1, "Event ID is required"),
+    }),
+  }),
+
+  registerForEvent: z.object({
+    params: z.object({
+      eventId: z.string().min(1, "Event ID is required"),
+    }),
+  }),
+
+  getEventById: z.object({
+    params: z.object({
+      id: z.string().min(1, "Event ID is required"),
+    }),
+  }),
+
+  getEventRegistrations: z.object({
+    params: z.object({
+      eventId: z.string().min(1, "Event ID is required"),
+    }),
+  }),
+
+  createEventPayment: z.object({
+    body: z.object({
+      eventFee: z.number().positive("Event fee must be positive"),
+      eventId: z.string().min(1, "Event ID is required"),
+      userEmail: z.string().email("Invalid email address"),
+    }),
+  }),
+};
+
+/**
+ * Payment-related validation schemas
+ */
+const paymentSchemas = {
+  createMembershipPayment: z.object({
+    body: z.object({
+      membershipFee: z.number().positive("Membership fee must be positive"),
+      clubId: z.string().min(1, "Club ID is required"),
+      userEmail: z.string().email("Invalid email address"),
+    }),
+  }),
+
+  verifyPayment: z.object({
+    query: z.object({
+      session_id: z.string().min(1, "Session ID is required"),
+    }),
+  }),
+
+  updateMembershipStatus: z.object({
+    params: z.object({
+      memberId: z.string().min(1, "Membership ID is required"),
+    }),
+    body: z.object({
+      status: z.enum(["active", "expired"], {
+        errorMap: () => ({ message: "Status must be active or expired" }),
+      }),
+    }),
+  }),
+};
+
+/**
+ * Query validation schemas
+ */
+const querySchemas = {
+  search: z.object({
+    query: z.object({
+      search: z.string().optional(),
+      category: z.string().optional(),
+      sort: z.enum(["fee_asc", "fee_desc", "newest", "oldest"]).optional(),
+    }),
+  }),
+};
+
+module.exports = {
+  userSchemas,
+  clubSchemas,
+  eventSchemas,
+  paymentSchemas,
+  querySchemas,
+};
