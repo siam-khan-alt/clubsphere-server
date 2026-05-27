@@ -1,6 +1,8 @@
 const { ObjectId } = require("mongodb");
 const { getCollections } = require("../config");
 const logger = require("../config/logger");
+const { notifyClubJoin, notifyMembershipStatusChange } = require("./notificationController");
+const emailService = require("../utils/emailService");
 
 /**
  * Create a new club (manager only)
@@ -479,9 +481,10 @@ const joinClub = async (req, res) => {
       userEmail: userEmail,
       clubId: clubId,
       status: "active",
+      startDate: new Date(),
+      endDate: null,
       paymentId: "FREE_JOIN",
       joinedAt: new Date(),
-      expiresAt: null,
     };
     await membershipsCollection.insertOne(newMembership);
 
@@ -495,6 +498,9 @@ const joinClub = async (req, res) => {
         `Club ${clubId} members array was likely already updated for ${userEmail}.`
       );
     }
+
+    // Send notification
+    await notifyClubJoin(userEmail, club.clubName, clubId);
 
     res
       .status(201)
@@ -621,6 +627,26 @@ const updateMembershipStatus = async (req, res) => {
 
     if (result.matchedCount === 0) {
       return res.status(404).send({ message: "Membership not found." });
+    }
+
+    // Send notification
+    await notifyMembershipStatusChange(
+      membership.userEmail,
+      club.clubName,
+      status
+    );
+
+    // Send email
+    try {
+      await emailService.sendMembershipStatusEmail(
+        membership.userEmail,
+        membership.userEmail.split("@")[0], // Simple name extraction
+        club.clubName,
+        status,
+        membership.endDate ? membership.endDate.toISOString().split("T")[0] : null
+      );
+    } catch (emailError) {
+      logger.error("Failed to send membership status email:", emailError);
     }
 
     res.send({ message: `Membership status updated to ${status}.` });

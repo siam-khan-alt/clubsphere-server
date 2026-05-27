@@ -44,6 +44,7 @@ const getCollections = () => {
     eventsCollection: database.collection("events"),
     paymentsCollection: database.collection("payments"),
     eventRegistrationsCollection: database.collection("eventRegistrations"),
+    notificationsCollection: database.collection("notifications"),
   };
 };
 

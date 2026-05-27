@@ -1,6 +1,7 @@
 const { ObjectId } = require("mongodb");
 const { getCollections, getFirebaseAdmin } = require("../config");
 const logger = require("../config/logger");
+const emailService = require("../utils/emailService");
 
 const admin = getFirebaseAdmin();
 
@@ -29,6 +30,14 @@ const registerUser = async (req, res) => {
     };
 
     await usersCollection.insertOne(newUser);
+    
+    // Send welcome email
+    try {
+      await emailService.sendWelcomeEmail(email, name);
+    } catch (emailError) {
+      logger.error("Failed to send welcome email:", emailError);
+    }
+
     res.status(201).send({
       message: "User registered in DB successfully",
       role: "member",

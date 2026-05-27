@@ -1,6 +1,9 @@
 const { ObjectId } = require("mongodb");
 const { getCollections, stripe } = require("../config");
 const logger = require("../config/logger");
+const { notifyEventRegistration } = require("./notificationController");
+const emailService = require("../utils/emailService");
+const { generateEventICS } = require("../utils/calendarService");
 
 /**
  * Get manager's events (manager only)
@@ -482,6 +485,16 @@ const registerForEvent = async (req, res) => {
     };
     await eventRegistrationsCollection.insertOne(newRegistration);
 
+    // Send notification
+    await notifyEventRegistration(userEmail, event.title, eventId, event.date);
+
+    // Send email confirmation
+    try {
+      await emailService.sendEventRegistrationEmail(userEmail, userName, event.title, event.date, event.location);
+    } catch (emailError) {
+      logger.error("Failed to send event registration email:", emailError);
+    }
+
     res
       .status(201)
       .send({ message: "Successfully registered for the event (Free)." });
@@ -559,6 +572,48 @@ const getMemberEvents = async (req, res) => {
   }
 };
 
+/**
+ * Download event as calendar file (public)
+ */
+const downloadEventCalendar = async (req, res) => {
+  const eventId = req.params.id;
+  const { eventsCollection, clubsCollection } = getCollections();
+
+  try {
+    const event = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
+
+    if (!event) {
+      return res.status(404).send({ message: "Event not found." });
+    }
+
+    const club = await clubsCollection.findOne({ _id: new ObjectId(event.clubId) });
+
+    if (!club) {
+      return res.status(404).send({ message: "Club not found." });
+    }
+
+    const eventData = {
+      title: event.title,
+      description: event.description,
+      date: event.date,
+      location: event.location,
+      clubName: club.clubName,
+    };
+
+    const icsData = await generateEventICS(eventData);
+
+    res.setHeader("Content-Type", "text/calendar");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${icsData.filename}"`
+    );
+    res.send(icsData.content);
+  } catch (error) {
+    logger.error("Error generating event calendar:", error);
+    res.status(500).send({ message: "Failed to generate calendar file." });
+  }
+};
+
 module.exports = {
   getManagerEvents,
   getEventRegistrations,
@@ -571,4 +626,5 @@ module.exports = {
   registerForEvent,
   checkEventRegistrationStatus,
   getMemberEvents,
+  downloadEventCalendar,
 };

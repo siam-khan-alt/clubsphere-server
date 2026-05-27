@@ -7,6 +7,7 @@ const {
   registerForEvent,
   checkEventRegistrationStatus,
   getMemberEvents,
+  downloadEventCalendar,
 } = require("../controllers/eventController");
 const { verifyToken, verifyMember } = require("../middleware/authMiddleware");
 const validateRequest = require("../middleware/validateRequest");
@@ -14,6 +15,7 @@ const { eventSchemas } = require("../validators/schemas");
 
 // Public routes (specific routes first, then dynamic)
 router.get("/", getPublicEvents);
+router.get("/:id/calendar", validateRequest(eventSchemas.getEventById), downloadEventCalendar);
 
 // Member routes (specific routes before dynamic)
 router.get("/member/events", verifyToken, verifyMember, getMemberEvents);

@@ -6,12 +6,15 @@ const { verifyToken, verifyAdmin, verifyManager, verifyMember } = require("./src
 const { generalLimiter, authLimiter, publicLimiter, webhookLimiter } = require("./src/middleware/rateLimiter");
 const { errorHandler, notFoundHandler } = require("./src/middleware/errorHandler");
 const logger = require("./src/config/logger");
+const emailService = require("./src/utils/emailService");
+const { startMembershipExpirationJob } = require("./src/jobs/membershipExpirationJob");
 const userRoutes = require("./src/routes/userRoutes");
 const clubRoutes = require("./src/routes/clubRoutes");
 const eventRoutes = require("./src/routes/eventRoutes");
 const { router: paymentRoutes, webhookRouter } = require("./src/routes/paymentRoutes");
 const adminRoutes = require("./src/routes/adminRoutes");
 const managerRoutes = require("./src/routes/managerRoutes");
+const notificationRoutes = require("./src/routes/notificationRoutes");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -60,6 +63,9 @@ app.use("/admin", generalLimiter, adminRoutes);
 logger.info("- /manager -> managerRoutes (general limiter)");
 app.use("/manager", generalLimiter, managerRoutes);
 
+logger.info("- /notifications -> notificationRoutes (general limiter)");
+app.use("/notifications", generalLimiter, notificationRoutes);
+
 // Mount webhook with raw body parsing for Stripe signature verification
 logger.info("- /webhook -> webhookRouter (webhook limiter)");
 app.use("/webhook", express.raw({ type: "application/json" }), webhookLimiter, webhookRouter);
@@ -80,6 +86,12 @@ async function run() {
     await connectDatabase();
     logger.info("Database connected successfully.");
 
+    // Initialize email service
+    emailService.initialize();
+
+    // Start membership expiration job
+    startMembershipExpirationJob();
+
     app.listen(port, () => {
       logger.info(`ClubSphere Server listening on port ${port}`);
       logger.info("\nRegistered Routes:");
@@ -98,6 +110,7 @@ async function run() {
       logger.info("- GET /clubs/:id");
       logger.info("\nEvent Routes:");
       logger.info("- GET /events/");
+      logger.info("- GET /events/:id/calendar");
       logger.info("- GET /events/member/events");
       logger.info("- GET /events/member/event-registration-status/:eventId");
       logger.info("- POST /events/event-payment/create-checkout-session");
@@ -125,6 +138,11 @@ async function run() {
       logger.info("- POST /manager/events");
       logger.info("- PATCH /manager/events/:id");
       logger.info("- DELETE /manager/events/:id");
+      logger.info("\nNotification Routes:");
+      logger.info("- GET /notifications/");
+      logger.info("- PATCH /notifications/:notificationId/read");
+      logger.info("- PATCH /notifications/read-all");
+      logger.info("- DELETE /notifications/:notificationId");
     });
   } catch (error) {
     logger.error("Failed to start server:", error);

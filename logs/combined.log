@@ -1,0 +1,453 @@
+{"level":"info","message":"Mounting routes:","service":"clubsphere-api","timestamp":"2026-05-27 07:02:33"}
+{"level":"info","message":"- /users -> userRoutes (auth limiter)","service":"clubsphere-api","timestamp":"2026-05-27 07:02:33"}
+{"level":"info","message":"- /clubs -> clubRoutes (public limiter)","service":"clubsphere-api","timestamp":"2026-05-27 07:02:33"}
+{"level":"info","message":"- /events -> eventRoutes (public limiter)","service":"clubsphere-api","timestamp":"2026-05-27 07:02:33"}
+{"level":"info","message":"- /payments -> paymentRoutes (general limiter)","service":"clubsphere-api","timestamp":"2026-05-27 07:02:33"}
+{"level":"info","message":"- /admin -> adminRoutes (general limiter)","service":"clubsphere-api","timestamp":"2026-05-27 07:02:33"}
+{"level":"info","message":"- /manager -> managerRoutes (general limiter)","service":"clubsphere-api","timestamp":"2026-05-27 07:02:33"}
+{"level":"info","message":"- /webhook -> webhookRouter (webhook limiter)","service":"clubsphere-api","timestamp":"2026-05-27 07:02:33"}
+{"level":"info","message":"Database connected successfully.","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"ClubSphere Server listening on port 5000","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"\nRegistered Routes:","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"\nUser Routes:","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- POST /users/register","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- POST /users/google-login","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- PATCH /users/update","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- GET /users/role","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- GET /users/member/stats-and-upcoming-events","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"\nClub Routes:","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- GET /clubs/","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- GET /clubs/featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- GET /clubs/popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- GET /clubs/member/clubs","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- POST /clubs/join/:id","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- GET /clubs/:id","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"\nEvent Routes:","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- GET /events/","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- GET /events/member/events","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- GET /events/member/event-registration-status/:eventId","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- POST /events/event-payment/create-checkout-session","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- POST /events/events/register/:eventId","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- GET /events/:id","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"\nPayment Routes:","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- POST /payments/membership-payment/create-checkout-session","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- GET /payments/member/payments","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- GET /payments/success","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- POST /payments/webhook","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"\nAdmin Routes:","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- GET /admin/users","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- PATCH /admin/users/role/:email","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- DELETE /admin/users/:email","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- GET /admin/clubs","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- PATCH /admin/clubs/status/:clubId","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- DELETE /admin/clubs/:clubId","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"\nManager Routes:","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- GET /manager/clubs","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- POST /manager/clubs","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- PATCH /manager/clubs/:id","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- DELETE /manager/clubs/:id","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- GET /manager/events","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- GET /manager/events/:eventId/registrations","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- POST /manager/events","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- PATCH /manager/events/:id","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"level":"info","message":"- DELETE /manager/events/:id","service":"clubsphere-api","timestamp":"2026-05-27 07:02:35"}
+{"ip":"::1","level":"info","message":"GET /manager/stats","service":"clubsphere-api","timestamp":"2026-05-27 07:03:32","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 07:03:43","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 07:03:43","url":"/featuredClubs"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 07:03:43","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 07:03:43","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 07:03:44","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 07:03:44","url":"/featuredClubs"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 07:03:44","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 07:03:44","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /users/role","service":"clubsphere-api","timestamp":"2026-05-27 07:03:45","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 07:03:46","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 07:03:46","url":"/featuredClubs"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 07:03:46","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 07:03:46","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /","service":"clubsphere-api","timestamp":"2026-05-27 07:03:48","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 07:03:50","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 07:03:50","url":"/featuredClubs"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 07:03:50","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 07:03:50","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /clubs?sort=newest","service":"clubsphere-api","timestamp":"2026-05-27 07:04:00","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /events?search=&sort=eventDate&order=asc","service":"clubsphere-api","timestamp":"2026-05-27 07:04:03","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /clubs?sort=newest","service":"clubsphere-api","timestamp":"2026-05-27 07:04:05","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /manager/stats","service":"clubsphere-api","timestamp":"2026-05-27 07:04:15","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /manager/clubs","service":"clubsphere-api","timestamp":"2026-05-27 07:04:18","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /manager/events","service":"clubsphere-api","timestamp":"2026-05-27 07:04:21","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /users/role","service":"clubsphere-api","timestamp":"2026-05-27 07:04:33","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /users/role","service":"clubsphere-api","timestamp":"2026-05-27 07:04:33","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /users/member/stats-and-upcoming-events","service":"clubsphere-api","timestamp":"2026-05-27 07:04:33","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /clubs/member/clubs","service":"clubsphere-api","timestamp":"2026-05-27 07:04:35","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /payments/member/payments","service":"clubsphere-api","timestamp":"2026-05-27 07:04:36","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /events/member/events","service":"clubsphere-api","timestamp":"2026-05-27 07:04:39","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /users/role","service":"clubsphere-api","timestamp":"2026-05-27 07:04:49","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /users/role","service":"clubsphere-api","timestamp":"2026-05-27 07:04:49","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /users/role","service":"clubsphere-api","timestamp":"2026-05-27 07:04:56","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /users/role","service":"clubsphere-api","timestamp":"2026-05-27 07:05:00","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /users/role","service":"clubsphere-api","timestamp":"2026-05-27 07:07:13","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"POST /users/google-login","service":"clubsphere-api","timestamp":"2026-05-27 07:07:13","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"info","message":"Mounting routes:","service":"clubsphere-api","timestamp":"2026-05-27 11:59:16"}
+{"level":"info","message":"- /users -> userRoutes (auth limiter)","service":"clubsphere-api","timestamp":"2026-05-27 11:59:16"}
+{"level":"info","message":"- /clubs -> clubRoutes (public limiter)","service":"clubsphere-api","timestamp":"2026-05-27 11:59:16"}
+{"level":"info","message":"- /events -> eventRoutes (public limiter)","service":"clubsphere-api","timestamp":"2026-05-27 11:59:16"}
+{"level":"info","message":"- /payments -> paymentRoutes (general limiter)","service":"clubsphere-api","timestamp":"2026-05-27 11:59:16"}
+{"level":"info","message":"- /admin -> adminRoutes (general limiter)","service":"clubsphere-api","timestamp":"2026-05-27 11:59:16"}
+{"level":"info","message":"- /manager -> managerRoutes (general limiter)","service":"clubsphere-api","timestamp":"2026-05-27 11:59:16"}
+{"level":"info","message":"- /webhook -> webhookRouter (webhook limiter)","service":"clubsphere-api","timestamp":"2026-05-27 11:59:16"}
+{"level":"info","message":"Database connected successfully.","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"ClubSphere Server listening on port 5000","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"\nRegistered Routes:","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"\nUser Routes:","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- POST /users/register","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- POST /users/google-login","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- PATCH /users/update","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- GET /users/role","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- GET /users/member/stats-and-upcoming-events","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"\nClub Routes:","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- GET /clubs/","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- GET /clubs/featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- GET /clubs/popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- GET /clubs/member/clubs","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- POST /clubs/join/:id","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- GET /clubs/:id","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"\nEvent Routes:","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- GET /events/","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- GET /events/member/events","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- GET /events/member/event-registration-status/:eventId","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- POST /events/event-payment/create-checkout-session","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- POST /events/events/register/:eventId","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- GET /events/:id","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"\nPayment Routes:","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- POST /payments/membership-payment/create-checkout-session","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- GET /payments/member/payments","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- GET /payments/success","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- POST /payments/webhook","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"\nAdmin Routes:","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- GET /admin/users","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- PATCH /admin/users/role/:email","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- DELETE /admin/users/:email","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- GET /admin/clubs","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- PATCH /admin/clubs/status/:clubId","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- DELETE /admin/clubs/:clubId","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"\nManager Routes:","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- GET /manager/clubs","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- POST /manager/clubs","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- PATCH /manager/clubs/:id","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- DELETE /manager/clubs/:id","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- GET /manager/events","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- GET /manager/events/:eventId/registrations","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- POST /manager/events","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- PATCH /manager/events/:id","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"level":"info","message":"- DELETE /manager/events/:id","service":"clubsphere-api","timestamp":"2026-05-27 11:59:17"}
+{"ip":"::1","level":"info","message":"GET /users/role","service":"clubsphere-api","timestamp":"2026-05-27 11:59:45","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /users/role","service":"clubsphere-api","timestamp":"2026-05-27 11:59:46","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /admin/stats","service":"clubsphere-api","timestamp":"2026-05-27 11:59:46","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /admin/clubs","service":"clubsphere-api","timestamp":"2026-05-27 12:00:03","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /admin/users","service":"clubsphere-api","timestamp":"2026-05-27 12:00:11","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /admin/payments","service":"clubsphere-api","timestamp":"2026-05-27 12:00:13","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /admin/payments","service":"clubsphere-api","timestamp":"2026-05-27 12:07:26","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"info","message":"Mounting routes:","service":"clubsphere-api","timestamp":"2026-05-27 12:08:58"}
+{"level":"info","message":"- /users -> userRoutes (auth limiter)","service":"clubsphere-api","timestamp":"2026-05-27 12:08:58"}
+{"level":"info","message":"- /clubs -> clubRoutes (public limiter)","service":"clubsphere-api","timestamp":"2026-05-27 12:08:58"}
+{"level":"info","message":"- /events -> eventRoutes (public limiter)","service":"clubsphere-api","timestamp":"2026-05-27 12:08:58"}
+{"level":"info","message":"- /payments -> paymentRoutes (general limiter)","service":"clubsphere-api","timestamp":"2026-05-27 12:08:58"}
+{"level":"info","message":"- /admin -> adminRoutes (general limiter)","service":"clubsphere-api","timestamp":"2026-05-27 12:08:58"}
+{"level":"info","message":"- /manager -> managerRoutes (general limiter)","service":"clubsphere-api","timestamp":"2026-05-27 12:08:58"}
+{"level":"info","message":"- /webhook -> webhookRouter (webhook limiter)","service":"clubsphere-api","timestamp":"2026-05-27 12:08:58"}
+{"level":"info","message":"Database connected successfully.","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"ClubSphere Server listening on port 5000","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"\nRegistered Routes:","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"\nUser Routes:","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- POST /users/register","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- POST /users/google-login","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- PATCH /users/update","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- GET /users/role","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- GET /users/member/stats-and-upcoming-events","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"\nClub Routes:","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- GET /clubs/","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- GET /clubs/featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- GET /clubs/popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- GET /clubs/member/clubs","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- POST /clubs/join/:id","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- GET /clubs/:id","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"\nEvent Routes:","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- GET /events/","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- GET /events/member/events","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- GET /events/member/event-registration-status/:eventId","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- POST /events/event-payment/create-checkout-session","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- POST /events/events/register/:eventId","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- GET /events/:id","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"\nPayment Routes:","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- POST /payments/membership-payment/create-checkout-session","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- GET /payments/member/payments","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- GET /payments/success","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- POST /payments/webhook","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"\nAdmin Routes:","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- GET /admin/users","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- PATCH /admin/users/role/:email","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- DELETE /admin/users/:email","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- GET /admin/clubs","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- PATCH /admin/clubs/status/:clubId","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- DELETE /admin/clubs/:clubId","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"\nManager Routes:","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- GET /manager/clubs","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- POST /manager/clubs","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- PATCH /manager/clubs/:id","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- DELETE /manager/clubs/:id","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- GET /manager/events","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- GET /manager/events/:eventId/registrations","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- POST /manager/events","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- PATCH /manager/events/:id","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"- DELETE /manager/events/:id","service":"clubsphere-api","timestamp":"2026-05-27 12:08:59"}
+{"level":"info","message":"Mounting routes:","service":"clubsphere-api","timestamp":"2026-05-27 16:51:15"}
+{"level":"info","message":"- /users -> userRoutes (auth limiter)","service":"clubsphere-api","timestamp":"2026-05-27 16:51:15"}
+{"level":"info","message":"- /clubs -> clubRoutes (public limiter)","service":"clubsphere-api","timestamp":"2026-05-27 16:51:15"}
+{"level":"info","message":"- /events -> eventRoutes (public limiter)","service":"clubsphere-api","timestamp":"2026-05-27 16:51:15"}
+{"level":"info","message":"- /payments -> paymentRoutes (general limiter)","service":"clubsphere-api","timestamp":"2026-05-27 16:51:15"}
+{"level":"info","message":"- /admin -> adminRoutes (general limiter)","service":"clubsphere-api","timestamp":"2026-05-27 16:51:15"}
+{"level":"info","message":"- /manager -> managerRoutes (general limiter)","service":"clubsphere-api","timestamp":"2026-05-27 16:51:15"}
+{"level":"info","message":"- /webhook -> webhookRouter (webhook limiter)","service":"clubsphere-api","timestamp":"2026-05-27 16:51:15"}
+{"level":"info","message":"Database connected successfully.","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"ClubSphere Server listening on port 5000","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"\nRegistered Routes:","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"\nUser Routes:","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- POST /users/register","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- POST /users/google-login","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- PATCH /users/update","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- GET /users/role","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- GET /users/member/stats-and-upcoming-events","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"\nClub Routes:","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- GET /clubs/","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- GET /clubs/featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- GET /clubs/popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- GET /clubs/member/clubs","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- POST /clubs/join/:id","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- GET /clubs/:id","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"\nEvent Routes:","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- GET /events/","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- GET /events/member/events","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- GET /events/member/event-registration-status/:eventId","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- POST /events/event-payment/create-checkout-session","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- POST /events/events/register/:eventId","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- GET /events/:id","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"\nPayment Routes:","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- POST /payments/membership-payment/create-checkout-session","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- GET /payments/member/payments","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- GET /payments/success","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- POST /payments/webhook","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"\nAdmin Routes:","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- GET /admin/users","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- PATCH /admin/users/role/:email","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- DELETE /admin/users/:email","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- GET /admin/clubs","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- PATCH /admin/clubs/status/:clubId","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- DELETE /admin/clubs/:clubId","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"\nManager Routes:","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- GET /manager/clubs","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- POST /manager/clubs","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- PATCH /manager/clubs/:id","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- DELETE /manager/clubs/:id","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- GET /manager/events","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- GET /manager/events/:eventId/registrations","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- POST /manager/events","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- PATCH /manager/events/:id","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"level":"info","message":"- DELETE /manager/events/:id","service":"clubsphere-api","timestamp":"2026-05-27 16:51:17"}
+{"ip":"::1","level":"info","message":"GET /featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 16:52:07","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 16:52:07","url":"/featuredClubs"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 16:52:07","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 16:52:07","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 16:52:08","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 16:52:08","url":"/featuredClubs"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 16:52:08","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 16:52:08","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 16:52:10","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 16:52:10","url":"/featuredClubs"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 16:52:10","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 16:52:10","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 16:52:14","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 16:52:14","url":"/featuredClubs"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 16:52:14","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 16:52:14","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /clubs?sort=newest","service":"clubsphere-api","timestamp":"2026-05-27 16:52:38","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /events?search=&sort=eventDate&order=asc","service":"clubsphere-api","timestamp":"2026-05-27 16:52:44","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 17:17:59","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:17:59","url":"/featuredClubs"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:17:59","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:17:59","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 17:18:01","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:18:01","url":"/featuredClubs"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:18:01","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:18:01","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 17:18:03","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:18:03","url":"/featuredClubs"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:18:03","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:18:03","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 17:18:07","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:18:07","url":"/featuredClubs"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:18:07","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:18:07","url":"/popular-clubsManagers"}
+{"level":"info","message":"Mounting routes:","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- /users -> userRoutes (auth limiter)","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- /clubs -> clubRoutes (public limiter)","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- /events -> eventRoutes (public limiter)","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- /payments -> paymentRoutes (general limiter)","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- /admin -> adminRoutes (general limiter)","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- /manager -> managerRoutes (general limiter)","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- /webhook -> webhookRouter (webhook limiter)","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"Database connected successfully.","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"ClubSphere Server listening on port 5000","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"\nRegistered Routes:","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"\nUser Routes:","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- POST /users/register","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- POST /users/google-login","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- PATCH /users/update","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- GET /users/role","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- GET /users/member/stats-and-upcoming-events","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"\nClub Routes:","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- GET /clubs/","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- GET /clubs/featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- GET /clubs/popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- GET /clubs/member/clubs","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- POST /clubs/join/:id","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- GET /clubs/:id","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"\nEvent Routes:","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- GET /events/","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- GET /events/member/events","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- GET /events/member/event-registration-status/:eventId","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- POST /events/event-payment/create-checkout-session","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- POST /events/events/register/:eventId","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- GET /events/:id","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"\nPayment Routes:","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- POST /payments/membership-payment/create-checkout-session","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- GET /payments/member/payments","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- GET /payments/success","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- POST /payments/webhook","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"\nAdmin Routes:","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- GET /admin/users","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- PATCH /admin/users/role/:email","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- DELETE /admin/users/:email","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- GET /admin/clubs","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- PATCH /admin/clubs/status/:clubId","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- DELETE /admin/clubs/:clubId","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"\nManager Routes:","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- GET /manager/clubs","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- POST /manager/clubs","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- PATCH /manager/clubs/:id","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- DELETE /manager/clubs/:id","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- GET /manager/events","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- GET /manager/events/:eventId/registrations","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- POST /manager/events","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- PATCH /manager/events/:id","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"level":"info","message":"- DELETE /manager/events/:id","service":"clubsphere-api","timestamp":"2026-05-27 17:19:09"}
+{"ip":"::1","level":"info","message":"GET /featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 17:19:11","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:19:11","url":"/featuredClubs"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:19:11","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:19:11","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 17:19:12","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:19:12","url":"/featuredClubs"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:19:12","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:19:12","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 17:19:14","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:19:14","url":"/featuredClubs"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:19:14","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:19:14","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 17:19:18","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:19:18","url":"/featuredClubs"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:19:18","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:19:18","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 17:19:27","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:19:27","url":"/featuredClubs"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:19:27","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:19:27","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 17:19:28","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:19:28","url":"/featuredClubs"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:19:28","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:19:28","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 17:19:30","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:19:30","url":"/featuredClubs"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:19:30","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:19:30","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 17:19:34","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:19:34","url":"/featuredClubs"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:19:34","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:19:34","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 17:21:41","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:21:41","url":"/featuredClubs"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:21:54","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:21:54","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /clubs/featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 17:21:54","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:21:55","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:21:55","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:21:57","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:21:57","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:22:01","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:22:01","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:22:38","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:22:38","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:22:39","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:22:39","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:22:41","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:22:41","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:22:45","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:22:45","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:24:17","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"warn","message":"Route not found","method":"GET","service":"clubsphere-api","timestamp":"2026-05-27 17:24:17","url":"/popular-clubsManagers"}
+{"ip":"::1","level":"info","message":"GET /clubs/popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:24:19","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /clubs/featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 17:24:22","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /clubs/popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:24:22","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"ip":"::1","level":"info","message":"GET /clubs/popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:26:07","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+{"level":"info","message":"Mounting routes:","service":"clubsphere-api","timestamp":"2026-05-27 17:29:42"}
+{"level":"info","message":"- /users -> userRoutes (auth limiter)","service":"clubsphere-api","timestamp":"2026-05-27 17:29:42"}
+{"level":"info","message":"- /clubs -> clubRoutes (public limiter)","service":"clubsphere-api","timestamp":"2026-05-27 17:29:42"}
+{"level":"info","message":"- /events -> eventRoutes (public limiter)","service":"clubsphere-api","timestamp":"2026-05-27 17:29:42"}
+{"level":"info","message":"- /payments -> paymentRoutes (general limiter)","service":"clubsphere-api","timestamp":"2026-05-27 17:29:42"}
+{"level":"info","message":"- /admin -> adminRoutes (general limiter)","service":"clubsphere-api","timestamp":"2026-05-27 17:29:42"}
+{"level":"info","message":"- /manager -> managerRoutes (general limiter)","service":"clubsphere-api","timestamp":"2026-05-27 17:29:42"}
+{"level":"info","message":"- /webhook -> webhookRouter (webhook limiter)","service":"clubsphere-api","timestamp":"2026-05-27 17:29:42"}
+{"level":"info","message":"Database connected successfully.","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"ClubSphere Server listening on port 5000","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"\nRegistered Routes:","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"\nUser Routes:","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- POST /users/register","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- POST /users/google-login","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- PATCH /users/update","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- GET /users/role","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- GET /users/member/stats-and-upcoming-events","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"\nClub Routes:","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- GET /clubs/","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- GET /clubs/featuredClubs","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- GET /clubs/popular-clubsManagers","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- GET /clubs/member/clubs","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- POST /clubs/join/:id","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- GET /clubs/:id","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"\nEvent Routes:","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- GET /events/","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- GET /events/member/events","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- GET /events/member/event-registration-status/:eventId","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- POST /events/event-payment/create-checkout-session","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- POST /events/events/register/:eventId","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- GET /events/:id","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"\nPayment Routes:","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- POST /payments/membership-payment/create-checkout-session","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- GET /payments/member/payments","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- GET /payments/success","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- POST /payments/webhook","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"\nAdmin Routes:","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- GET /admin/users","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- PATCH /admin/users/role/:email","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- DELETE /admin/users/:email","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- GET /admin/clubs","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- PATCH /admin/clubs/status/:clubId","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- DELETE /admin/clubs/:clubId","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"\nManager Routes:","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- GET /manager/clubs","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- POST /manager/clubs","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- PATCH /manager/clubs/:id","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- DELETE /manager/clubs/:id","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- GET /manager/events","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- GET /manager/events/:eventId/registrations","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- POST /manager/events","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- PATCH /manager/events/:id","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
+{"level":"info","message":"- DELETE /manager/events/:id","service":"clubsphere-api","timestamp":"2026-05-27 17:29:43"}
