@@ -286,9 +286,49 @@ const verifyPaymentSuccess = async (req, res) => {
   }
 };
 
+/**
+ * Get all payments (admin only)
+ */
+const getAdminPayments = async (req, res) => {
+  const { paymentsCollection, clubsCollection, eventsCollection, usersCollection } = getCollections();
+
+  try {
+    const payments = await paymentsCollection
+      .find({})
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    const result = await Promise.all(
+      payments.map(async (payment) => {
+        let details = {};
+        if (payment.type === "membership" && payment.clubId) {
+          const club = await clubsCollection.findOne(
+            { _id: new ObjectId(payment.clubId) },
+            { projection: { clubName: 1 } }
+          );
+          details.clubName = club?.clubName || "Unknown Club";
+        } else if (payment.type === "event" && payment.eventId) {
+          const event = await eventsCollection.findOne(
+            { _id: new ObjectId(payment.eventId) },
+            { projection: { title: 1 } }
+          );
+          details.eventTitle = event?.title || "Unknown Event";
+        }
+        return { ...payment, ...details };
+      })
+    );
+
+    res.send(result);
+  } catch (error) {
+    console.error("Error fetching admin payments:", error);
+    res.status(500).send({ message: "Failed to fetch payments." });
+  }
+};
+
 module.exports = {
   createMembershipCheckoutSession,
   handleStripeWebhook,
   getMemberPayments,
   verifyPaymentSuccess,
+  getAdminPayments,
 };

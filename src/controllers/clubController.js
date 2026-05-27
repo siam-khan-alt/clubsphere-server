@@ -537,6 +537,145 @@ const getMemberClubs = async (req, res) => {
   }
 };
 
+/**
+ * Get club members (manager only)
+ */
+const getClubMembers = async (req, res) => {
+  const clubId = req.params.clubId;
+  const managerEmail = req.tokenEmail;
+  const { clubsCollection, membershipsCollection, usersCollection } = getCollections();
+
+  try {
+    const club = await clubsCollection.findOne({
+      _id: new ObjectId(clubId),
+      managerEmail: managerEmail,
+    });
+
+    if (!club) {
+      return res.status(404).send({ message: "Club not found or you are not the manager." });
+    }
+
+    const memberships = await membershipsCollection
+      .find({ clubId: clubId, status: "active" })
+      .toArray();
+
+    const userEmails = memberships.map((m) => m.userEmail);
+    const users = await usersCollection
+      .find({ email: { $in: userEmails } })
+      .toArray();
+
+    const userMap = users.reduce((acc, user) => {
+      acc[user.email] = user;
+      return acc;
+    }, {});
+
+    const result = memberships.map((membership) => ({
+      ...membership,
+      userDetails: userMap[membership.userEmail] || { name: "Unknown User" },
+    }));
+
+    res.send({ clubName: club.clubName, members: result });
+  } catch (error) {
+    console.error("Error fetching club members:", error);
+    res.status(500).send({ message: "Failed to fetch club members." });
+  }
+};
+
+/**
+ * Update membership status (manager only)
+ */
+const updateMembershipStatus = async (req, res) => {
+  const membershipId = req.params.memberId;
+  const managerEmail = req.tokenEmail;
+  const { status } = req.body;
+  const { membershipsCollection, clubsCollection } = getCollections();
+
+  if (!status || (status !== "active" && status !== "expired")) {
+    return res.status(400).send({ message: 'Invalid status. Must be "active" or "expired".' });
+  }
+
+  try {
+    const membership = await membershipsCollection.findOne({
+      _id: new ObjectId(membershipId),
+    });
+
+    if (!membership) {
+      return res.status(404).send({ message: "Membership not found." });
+    }
+
+    const club = await clubsCollection.findOne({
+      _id: new ObjectId(membership.clubId),
+      managerEmail: managerEmail,
+    });
+
+    if (!club) {
+      return res.status(403).send({ message: "You are not authorized to manage this club." });
+    }
+
+    const result = await membershipsCollection.updateOne(
+      { _id: new ObjectId(membershipId) },
+      { $set: { status: status, updatedAt: new Date() } }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).send({ message: "Membership not found." });
+    }
+
+    res.send({ message: `Membership status updated to ${status}.` });
+  } catch (error) {
+    console.error("Error updating membership status:", error);
+    res.status(500).send({ message: "Failed to update membership status." });
+  }
+};
+
+/**
+ * Get manager dashboard stats (manager only)
+ */
+const getManagerStats = async (req, res) => {
+  const managerEmail = req.tokenEmail;
+  const { clubsCollection, eventsCollection, membershipsCollection, eventRegistrationsCollection } = getCollections();
+
+  try {
+    const clubs = await clubsCollection
+      .find({ managerEmail: managerEmail })
+      .toArray();
+
+    const clubIds = clubs.map((club) => club._id.toString());
+
+    const events = await eventsCollection
+      .find({ clubId: { $in: clubIds } })
+      .toArray();
+
+    const memberships = await membershipsCollection
+      .find({ clubId: { $in: clubIds }, status: "active" })
+      .toArray();
+
+    const eventIds = events.map((event) => event._id.toString());
+    const registrations = await eventRegistrationsCollection
+      .find({ eventId: { $in: eventIds } })
+      .toArray();
+
+    const totalMembers = memberships.length;
+    const totalEvents = events.length;
+    const totalRegistrations = registrations.length;
+
+    const pendingClubs = clubs.filter((club) => club.status === "pending").length;
+    const approvedClubs = clubs.filter((club) => club.status === "approved").length;
+
+    res.send({
+      totalClubs: clubs.length,
+      totalEvents,
+      totalMembers,
+      totalRegistrations,
+      pendingClubs,
+      approvedClubs,
+    });
+  } catch (error) {
+    console.error("Error fetching manager stats:", error);
+    res.status(500).send({ message: "Failed to fetch manager stats." });
+  }
+};
+
 module.exports = {
   createClub,
   getAdminClubs,
@@ -551,4 +690,7 @@ module.exports = {
   getClubById,
   joinClub,
   getMemberClubs,
+  getClubMembers,
+  updateMembershipStatus,
+  getManagerStats,
 };

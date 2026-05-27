@@ -288,6 +288,46 @@ const getMemberStatsAndUpcomingEvents = async (req, res) => {
   }
 };
 
+/**
+ * Get admin dashboard stats (admin only)
+ */
+const getAdminStats = async (req, res) => {
+  const { usersCollection, clubsCollection, eventsCollection, paymentsCollection, membershipsCollection, eventRegistrationsCollection } = getCollections();
+
+  try {
+    const totalUsers = await usersCollection.countDocuments();
+    const totalClubs = await clubsCollection.countDocuments();
+    const totalEvents = await eventsCollection.countDocuments();
+    const totalPayments = await paymentsCollection.countDocuments();
+    const totalMemberships = await membershipsCollection.countDocuments();
+    const totalEventRegistrations = await eventRegistrationsCollection.countDocuments();
+
+    const pendingClubs = await clubsCollection.countDocuments({ status: "pending" });
+    const approvedClubs = await clubsCollection.countDocuments({ status: "approved" });
+
+    const totalRevenue = await paymentsCollection.aggregate([
+      { $match: { status: "completed" } },
+      { $group: { _id: null, total: { $sum: "$amount" } } }
+    ]).toArray();
+    const revenue = totalRevenue[0]?.total || 0;
+
+    res.send({
+      totalUsers,
+      totalClubs,
+      totalEvents,
+      totalPayments,
+      totalMemberships,
+      totalEventRegistrations,
+      pendingClubs,
+      approvedClubs,
+      totalRevenue: revenue,
+    });
+  } catch (error) {
+    console.error("Error fetching admin stats:", error);
+    res.status(500).send({ message: "Failed to fetch admin stats." });
+  }
+};
+
 module.exports = {
   registerUser,
   googleLogin,
@@ -297,4 +337,5 @@ module.exports = {
   updateUserRole,
   deleteUser,
   getMemberStatsAndUpcomingEvents,
+  getAdminStats,
 };
