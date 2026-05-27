@@ -7,12 +7,15 @@ const {
   verifyPaymentSuccess,
 } = require("../controllers/paymentController");
 const { verifyToken, verifyMember } = require("../middleware/authMiddleware");
+const validateRequest = require("../middleware/validateRequest");
+const { paymentSchemas } = require("../validators/schemas");
 
 // Membership payment routes
 router.post(
   "/membership-payment/create-checkout-session",
   verifyToken,
   verifyMember,
+  validateRequest(paymentSchemas.createMembershipPayment),
   createMembershipCheckoutSession
 );
 
@@ -20,7 +23,7 @@ router.post(
 router.get("/member/payments", verifyToken, verifyMember, getMemberPayments);
 
 // Payment success verification (public)
-router.get("/success", verifyPaymentSuccess);
+router.get("/success", validateRequest(paymentSchemas.verifyPayment), verifyPaymentSuccess);
 
 // Stripe webhook handler (exported separately for raw body parsing)
 const webhookRouter = express.Router();

@@ -9,17 +9,19 @@ const {
   getMemberEvents,
 } = require("../controllers/eventController");
 const { verifyToken, verifyMember } = require("../middleware/authMiddleware");
+const validateRequest = require("../middleware/validateRequest");
+const { eventSchemas } = require("../validators/schemas");
 
 // Public routes (specific routes first, then dynamic)
 router.get("/", getPublicEvents);
 
 // Member routes (specific routes before dynamic)
 router.get("/member/events", verifyToken, verifyMember, getMemberEvents);
-router.get("/member/event-registration-status/:eventId", verifyToken, verifyMember, checkEventRegistrationStatus);
-router.post("/event-payment/create-checkout-session", verifyToken, verifyMember, createEventPaymentSession);
-router.post("/events/register/:eventId", verifyToken, verifyMember, registerForEvent);
+router.get("/member/event-registration-status/:eventId", verifyToken, verifyMember, validateRequest(eventSchemas.getEventById), checkEventRegistrationStatus);
+router.post("/event-payment/create-checkout-session", verifyToken, verifyMember, validateRequest(eventSchemas.createEventPayment), createEventPaymentSession);
+router.post("/events/register/:eventId", verifyToken, verifyMember, validateRequest(eventSchemas.registerForEvent), registerForEvent);
 
 // Dynamic routes (must be last)
-router.get("/:id", getEventById);
+router.get("/:id", validateRequest(eventSchemas.getEventById), getEventById);
 
 module.exports = router;

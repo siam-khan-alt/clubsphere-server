@@ -1,5 +1,6 @@
 const { ObjectId } = require("mongodb");
 const { getCollections, stripe } = require("../config");
+const logger = require("../config/logger");
 
 /**
  * Get manager's events (manager only)
@@ -20,7 +21,7 @@ const getManagerEvents = async (req, res) => {
 
     res.send(events);
   } catch (error) {
-    console.error("Fetch manager events error:", error);
+    logger.error("Fetch manager events error:", error);
     res.status(500).send({ message: "Failed to retrieve events list." });
   }
 };
@@ -59,7 +60,7 @@ const getEventRegistrations = async (req, res) => {
 
     res.send({ eventTitle: event.title, registrations });
   } catch (error) {
-    console.error("Fetch event registrations error:", error);
+    logger.error("Fetch event registrations error:", error);
     res
       .status(500)
       .send({ message: "Failed to retrieve event registrations." });
@@ -141,7 +142,7 @@ const createEvent = async (req, res) => {
       eventId: result.insertedId,
     });
   } catch (error) {
-    console.error("Event creation error:", error);
+    logger.error("Event creation error:", error);
     res
       .status(500)
       .send({ message: "Failed to create event due to server error." });
@@ -207,7 +208,7 @@ const updateEvent = async (req, res) => {
 
     res.send({ message: "Event updated successfully." });
   } catch (error) {
-    console.error("Event update error:", error);
+    logger.error("Event update error:", error);
     res
       .status(500)
       .send({ message: "Failed to update event due to server error." });
@@ -250,7 +251,7 @@ const deleteEvent = async (req, res) => {
 
     res.send({ message: "Event deleted successfully." });
   } catch (error) {
-    console.error("Event deletion error:", error);
+    logger.error("Event deletion error:", error);
     res
       .status(500)
       .send({ message: "Failed to delete event due to server error." });
@@ -306,7 +307,7 @@ const getPublicEvents = async (req, res) => {
 
     res.send(result);
   } catch (error) {
-    console.error("Error fetching public events:", error);
+    logger.error("Error fetching public events:", error);
     res.status(500).send({ message: "Failed to fetch events." });
   }
 };
@@ -339,7 +340,7 @@ const getEventById = async (req, res) => {
 
     res.send(event);
   } catch (error) {
-    console.error("Error fetching event details:", error);
+    logger.error("Error fetching event details:", error);
     res.status(500).send({
       message: "Failed to fetch event details due to server error.",
     });
@@ -416,7 +417,7 @@ const createEventPaymentSession = async (req, res) => {
 
     res.send({ url: session.url });
   } catch (error) {
-    console.error("Stripe Event Checkout Session Error:", error);
+    logger.error("Stripe Event Checkout Session Error:", error);
     res
       .status(500)
       .send({ message: "Failed to create payment session for event." });
@@ -485,7 +486,7 @@ const registerForEvent = async (req, res) => {
       .status(201)
       .send({ message: "Successfully registered for the event (Free)." });
   } catch (error) {
-    console.error("Event registration failed (Free):", error);
+    logger.error("Event registration failed (Free):", error);
     res.status(500).send({
       message:
         "Failed to process free registration request due to server error.",
@@ -514,7 +515,7 @@ const checkEventRegistrationStatus = async (req, res) => {
 
     res.send({ isRegistered: !!registration });
   } catch (error) {
-    console.error("Error checking event registration status:", error);
+    logger.error("Error checking event registration status:", error);
     res.status(500).send({ message: "Failed to check registration status." });
   }
 };
@@ -553,7 +554,7 @@ const getMemberEvents = async (req, res) => {
 
     res.send(result);
   } catch (error) {
-    console.error("Error fetching member events:", error);
+    logger.error("Error fetching member events:", error);
     res.status(500).send({ message: "Failed to fetch member events." });
   }
 };

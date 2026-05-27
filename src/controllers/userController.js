@@ -1,5 +1,6 @@
 const { ObjectId } = require("mongodb");
 const { getCollections, getFirebaseAdmin } = require("../config");
+const logger = require("../config/logger");
 
 const admin = getFirebaseAdmin();
 
@@ -33,7 +34,7 @@ const registerUser = async (req, res) => {
       role: "member",
     });
   } catch (error) {
-    console.error("DB registration error:", error);
+    logger.error("DB registration error:", error);
     res.status(500).send({
       message: "Failed to register user in DB",
       error: error.message,
@@ -68,6 +69,7 @@ const googleLogin = async (req, res) => {
       role: user.role,
     });
   } catch (error) {
+    logger.error("Google login error:", error);
     res.status(500).send({ message: "Server error", error: error.message });
   }
 };
@@ -89,6 +91,7 @@ const updateUser = async (req, res) => {
     const result = await usersCollection.updateOne(filter, updatedDoc);
     res.send(result);
   } catch (error) {
+    logger.error("User update error:", error);
     res
       .status(500)
       .send({ message: "Update failed", error: error.message });
@@ -115,7 +118,7 @@ const getUserRole = async (req, res) => {
 
     res.send({ role: user.role });
   } catch (error) {
-    console.error("Role fetch error:", error);
+    logger.error("Role fetch error:", error);
     res
       .status(500)
       .send({ message: "Failed to fetch user role", error: error.message });
@@ -131,7 +134,7 @@ const getAllUsers = async (req, res) => {
     const users = await usersCollection.find().toArray();
     res.send(users);
   } catch (error) {
-    console.error("Fetch all users error:", error);
+    logger.error("Fetch all users error:", error);
     res
       .status(500)
       .send({ message: "Failed to fetch users from database." });
@@ -169,7 +172,7 @@ const updateUserRole = async (req, res) => {
       message: `${email} role updated to ${role} successfully.`,
     });
   } catch (error) {
-    console.error("Update user role error:", error);
+    logger.error("Update user role error:", error);
     res
       .status(500)
       .send({ message: "Failed to update user role in database." });
@@ -207,7 +210,7 @@ const deleteUser = async (req, res) => {
       message: `${email} deleted successfully from Firebase and DB.`,
     });
   } catch (error) {
-    console.error("Delete user error:", error);
+    logger.error("Delete user error:", error);
 
     if (
       error.code === "auth/user-not-found" ||
@@ -283,7 +286,7 @@ const getMemberStatsAndUpcomingEvents = async (req, res) => {
       suggestedClubs: suggestedClubs,
     });
   } catch (error) {
-    console.error("Error fetching member stats:", error);
+    logger.error("Error fetching member stats:", error);
     res.status(500).send({ message: "Failed to fetch member stats." });
   }
 };
@@ -323,7 +326,7 @@ const getAdminStats = async (req, res) => {
       totalRevenue: revenue,
     });
   } catch (error) {
-    console.error("Error fetching admin stats:", error);
+    logger.error("Error fetching admin stats:", error);
     res.status(500).send({ message: "Failed to fetch admin stats." });
   }
 };
