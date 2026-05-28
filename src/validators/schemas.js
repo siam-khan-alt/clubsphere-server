@@ -115,6 +115,12 @@ const clubSchemas = {
       clubId: z.string().min(1, "Club ID is required"),
     }),
   }),
+
+  leaveClub: z.object({
+    params: z.object({
+      id: z.string().min(1, "Club ID is required"),
+    }),
+  }),
 };
 
 /**

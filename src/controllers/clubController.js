@@ -4,7 +4,8 @@ const logger = require("../config/logger");
 const { notifyClubJoin, notifyMembershipStatusChange } = require("./notificationController");
 const emailService = require("../utils/emailService");
 const { deleteClubCascade } = require("../utils/cascadeDeleteService");
-const { createGroupRoom, addParticipantToRoom } = require("./chatController");
+const { createGroupRoom, addParticipantToRoom, removeParticipantFromRoom } = require("./chatController");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 /**
  * Create a new club (manager only)
@@ -743,6 +744,113 @@ const getManagerStats = async (req, res) => {
   }
 };
 
+/**
+ * Leave a club (member only)
+ */
+const leaveClub = async (req, res) => {
+  const clubId = req.params.id;
+  const userEmail = req.tokenEmail;
+  const {
+    membershipsCollection,
+    clubsCollection,
+    chatRoomsCollection,
+  } = getCollections();
+
+  try {
+    // Find the user's active membership for this club
+    const membership = await membershipsCollection.findOne({
+      clubId: clubId,
+      userEmail: userEmail,
+      status: "active",
+    });
+
+    if (!membership) {
+      return res.status(400).send({
+        message: "You are not an active member of this club.",
+      });
+    }
+
+    // Get club details to check for Stripe subscription
+    const club = await clubsCollection.findOne({
+      _id: new ObjectId(clubId),
+    });
+
+    if (!club) {
+      return res.status(404).send({
+        message: "Club not found.",
+      });
+    }
+
+    // Cancel Stripe subscription if the user has a paid subscription
+    if (membership.stripeSubscriptionId) {
+      try {
+        await stripe.subscriptions.cancel(membership.stripeSubscriptionId);
+        logger.info(
+          `Cancelled Stripe subscription ${membership.stripeSubscriptionId} for user ${userEmail}`
+        );
+      } catch (stripeError) {
+        logger.error(
+          `Failed to cancel Stripe subscription for user ${userEmail}:`,
+          stripeError
+        );
+        // Continue with leaving the club even if Stripe cancellation fails
+      }
+    }
+
+    // Wrap all updates in a transaction for atomicity
+    const dbSession = await startSession();
+    try {
+      await dbSession.withTransaction(async () => {
+        // Update membership status to cancelled
+        await membershipsCollection.updateOne(
+          { _id: membership._id },
+          {
+            $set: {
+              status: "cancelled",
+              endDate: new Date(),
+              updatedAt: new Date(),
+            },
+          },
+          { session: dbSession }
+        );
+
+        // Remove user from club's members array
+        await clubsCollection.updateOne(
+          { _id: new ObjectId(clubId) },
+          { $pull: { members: userEmail } },
+          { session: dbSession }
+        );
+
+        // Remove user from club's group chat participants
+        await chatRoomsCollection.updateOne(
+          { clubId: clubId, type: "group" },
+          { $pull: { participants: userEmail } },
+          { session: dbSession }
+        );
+      });
+    } finally {
+      await dbSession.endSession();
+    }
+
+    // Send notification about membership status change
+    await notifyMembershipStatusChange(
+      userEmail,
+      club.clubName,
+      "cancelled",
+      membership.endDate
+    );
+
+    res.status(200).send({
+      message: "Successfully left the club.",
+    });
+  } catch (error) {
+    logger.error("Club leave failed:", error);
+    res.status(500).send({
+      message: "Failed to leave the club due to server error.",
+    });
+  }
+};
+
 module.exports = {
   createClub,
   getAdminClubs,
@@ -756,6 +864,7 @@ module.exports = {
   getFeaturedClubs,
   getClubById,
   joinClub,
+  leaveClub,
   getMemberClubs,
   getClubMembers,
   updateMembershipStatus,

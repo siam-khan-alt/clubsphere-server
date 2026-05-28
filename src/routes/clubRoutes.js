@@ -5,6 +5,7 @@ const {
   getFeaturedClubs,
   getClubById,
   joinClub,
+  leaveClub,
   getMemberClubs,
   getPopularClubs,
 } = require("../controllers/clubController");
@@ -20,6 +21,7 @@ router.get("/popular-clubsManagers", getPopularClubs);
 // Member routes (specific routes before dynamic)
 router.get("/member/clubs", verifyToken, verifyMember, getMemberClubs);
 router.post("/join/:id", verifyToken, verifyMember, validateRequest(clubSchemas.joinClub), joinClub);
+router.post("/leave/:id", verifyToken, verifyMember, validateRequest(clubSchemas.leaveClub), leaveClub);
 
 // Dynamic routes (must be last)
 router.get("/:id", validateRequest(clubSchemas.getClubById), getClubById);
