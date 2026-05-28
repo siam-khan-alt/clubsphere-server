@@ -1175,6 +1175,254 @@ const getCurrentSeason = async (req, res) => {
   }
 };
 
+/**
+ * Calculate user's voting power for a specific club
+ * @param {string} clubId - The club ID
+ * @param {string} userEmail - The user's email
+ * @returns {Promise<number>} The calculated voting power
+ */
+const calculateVotingPower = async (clubId, userEmail) => {
+  try {
+    const { clubCommentsCollection, membershipsCollection } = getCollections();
+
+    // Base power = 1 vote per approved member
+    const membership = await membershipsCollection.findOne({
+      clubId: clubId,
+      userEmail: userEmail,
+      status: "active",
+    });
+
+    if (!membership) {
+      return 0; // Not a member, no voting power
+    }
+
+    let basePower = 1;
+
+    // Calculate contribution bonus
+    const userComments = await clubCommentsCollection.countDocuments({
+      clubId: clubId,
+      userEmail: userEmail,
+    });
+
+    const userReactions = await clubCommentsCollection.aggregate([
+      { $match: { clubId: clubId } },
+      { $unwind: "$reactions" },
+      { $match: { "reactions.userEmail": userEmail } },
+      { $count: "total" },
+    ]).toArray();
+
+    const totalReactions = userReactions[0]?.total || 0;
+
+    // Contribution bonus: +0.1 per comment, +0.02 per reaction, capped at +2.0
+    const commentBonus = Math.min(userComments * 0.1, 1.0); // Max 1.0 from comments
+    const reactionBonus = Math.min(totalReactions * 0.02, 1.0); // Max 1.0 from reactions
+    const contributionBonus = Math.min(commentBonus + reactionBonus, 2.0);
+
+    const totalPower = basePower + contributionBonus;
+
+    return Math.round(totalPower * 100) / 100; // Round to 2 decimal places
+  } catch (error) {
+    logger.error("Error calculating voting power:", error);
+    return 1; // Default to base power on error
+  }
+};
+
+/**
+ * Create a new proposal (only approved members or manager)
+ */
+const createProposal = async (req, res) => {
+  const clubId = req.params.id;
+  const userEmail = req.tokenEmail;
+  const { title, description, type, options, durationDays } = req.body;
+  const { clubProposalsCollection, clubsCollection, membershipsCollection } = getCollections();
+
+  try {
+    // Check if user is the club manager or an approved member
+    const club = await clubsCollection.findOne({ _id: new ObjectId(clubId) });
+
+    if (!club) {
+      return res.status(404).send({ message: "Club not found." });
+    }
+
+    const isManager = club.managerEmail === userEmail;
+
+    const membership = await membershipsCollection.findOne({
+      clubId: clubId,
+      userEmail: userEmail,
+      status: "active",
+    });
+
+    if (!isManager && !membership) {
+      return res.status(403).send({
+        message: "Only approved club members or the manager can create proposals.",
+      });
+    }
+
+    // Generate unique proposal ID
+    const proposalId = new ObjectId().toString();
+
+    // Create options with initial scores
+    const proposalOptions = options.map((optionText, index) => ({
+      id: `option_${index}`,
+      text: optionText,
+      votes: 0,
+    }));
+
+    const votingEndsAt = new Date();
+    votingEndsAt.setDate(votingEndsAt.getDate() + durationDays);
+
+    const newProposal = {
+      proposalId: proposalId,
+      clubId: clubId,
+      title: title,
+      description: description,
+      type: type,
+      options: proposalOptions,
+      votes: [],
+      quorum: Math.ceil((membership ? 1 : 1) * 0.5), // Minimum 50% of members
+      requiredMajority: 51, // 51% required to pass
+      createdBy: userEmail,
+      createdAt: new Date(),
+      votingStartsAt: new Date(),
+      votingEndsAt: votingEndsAt,
+      status: "active",
+      result: null,
+    };
+
+    await clubProposalsCollection.insertOne(newProposal);
+
+    res.status(201).send({
+      message: "Proposal created successfully.",
+      proposal: newProposal,
+    });
+  } catch (error) {
+    logger.error("Error creating proposal:", error);
+    res.status(500).send({ message: "Failed to create proposal." });
+  }
+};
+
+/**
+ * Get all proposals for a club
+ */
+const getClubProposals = async (req, res) => {
+  const clubId = req.params.id;
+  const userEmail = req.tokenEmail;
+  const { clubProposalsCollection } = getCollections();
+
+  try {
+    const proposals = await clubProposalsCollection
+      .find({ clubId: clubId })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    // Calculate user's voting power for this club
+    const userVotingPower = await calculateVotingPower(clubId, userEmail);
+
+    res.status(200).send({
+      proposals: proposals,
+      userVotingPower: userVotingPower,
+    });
+  } catch (error) {
+    logger.error("Error fetching club proposals:", error);
+    res.status(500).send({ message: "Failed to fetch proposals." });
+  }
+};
+
+/**
+ * Cast a weighted vote on a proposal
+ */
+const castVote = async (req, res) => {
+  const clubId = req.params.id;
+  const proposalId = req.params.proposalId;
+  const { optionId } = req.body;
+  const userEmail = req.tokenEmail;
+  const { clubProposalsCollection } = getCollections();
+
+  try {
+    const dbSession = await startSession();
+    try {
+      await dbSession.withTransaction(async () => {
+        // Find the proposal
+        const proposal = await clubProposalsCollection.findOne(
+          { _id: new ObjectId(proposalId), clubId: clubId },
+          { session: dbSession }
+        );
+
+        if (!proposal) {
+          throw new Error("Proposal not found.");
+        }
+
+        // Check if proposal is still active
+        if (proposal.status !== "active") {
+          throw new Error("Proposal is not active for voting.");
+        }
+
+        // Check if voting period has ended
+        if (new Date() > new Date(proposal.votingEndsAt)) {
+          throw new Error("Voting period has ended.");
+        }
+
+        // Check if user has already voted
+        const existingVote = proposal.votes.find((v) => v.userId === userEmail);
+        if (existingVote) {
+          throw new Error("You have already voted on this proposal.");
+        }
+
+        // Calculate user's voting power
+        const votingPower = await calculateVotingPower(clubId, userEmail);
+
+        if (votingPower === 0) {
+          throw new Error("You do not have voting power for this club.");
+        }
+
+        // Find the option and increment its score
+        const optionIndex = proposal.options.findIndex((o) => o.id === optionId);
+        if (optionIndex === -1) {
+          throw new Error("Invalid option ID.");
+        }
+
+        // Add the vote
+        proposal.votes.push({
+          userId: userEmail,
+          optionId: optionId,
+          weight: votingPower,
+          votedAt: new Date(),
+        });
+
+        // Increment the option's score
+        proposal.options[optionIndex].votes += votingPower;
+
+        // Update the proposal
+        await clubProposalsCollection.updateOne(
+          { _id: new ObjectId(proposalId) },
+          {
+            $set: {
+              votes: proposal.votes,
+              options: proposal.options,
+            },
+          },
+          { session: dbSession }
+        );
+      });
+    } finally {
+      await dbSession.endSession();
+    }
+
+    res.status(200).send({ message: "Vote cast successfully." });
+  } catch (error) {
+    logger.error("Error casting vote:", error);
+    if (error.message === "Proposal not found." || 
+        error.message === "Proposal is not active for voting." ||
+        error.message === "Voting period has ended." ||
+        error.message === "You have already voted on this proposal." ||
+        error.message === "You do not have voting power for this club." ||
+        error.message === "Invalid option ID.") {
+      return res.status(400).send({ message: error.message });
+    }
+    res.status(500).send({ message: "Failed to cast vote." });
+  }
+};
+
 module.exports = {
   createClub,
   getAdminClubs,
@@ -1199,4 +1447,7 @@ module.exports = {
   editClubComment,
   deleteClubComment,
   getCurrentSeason,
+  createProposal,
+  getClubProposals,
+  castVote,
 };

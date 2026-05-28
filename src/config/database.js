@@ -57,6 +57,8 @@ const getCollections = () => {
     clubCommentsCollection: database.collection("clubComments"),
     clubWarsSeasonsCollection: database.collection("clubWarsSeasons"),
     clubWarEventsCollection: database.collection("clubWarEvents"),
+    clubProposalsCollection: database.collection("clubProposals"),
+    memberVotingPowerCollection: database.collection("memberVotingPower"),
   };
 };
 

@@ -165,6 +165,37 @@ const clubSchemas = {
       commentId: z.string().min(1, "Comment ID is required"),
     }),
   }),
+
+  createProposal: z.object({
+    params: z.object({
+      id: z.string().min(1, "Club ID is required"),
+    }),
+    body: z.object({
+      title: z.string().min(5, "Title must be at least 5 characters").max(200, "Title must be less than 200 characters"),
+      description: z.string().min(10, "Description must be at least 10 characters").max(2000, "Description must be less than 2000 characters"),
+      type: z.enum(["budget", "rule_change", "event", "other"], {
+        errorMap: () => ({ message: "Type must be budget, rule_change, event, or other" }),
+      }),
+      options: z.array(z.string().min(1, "Option cannot be empty")).min(2, "At least 2 options required").max(5, "Maximum 5 options allowed"),
+      durationDays: z.number().int().min(1, "Duration must be at least 1 day").max(30, "Duration cannot exceed 30 days"),
+    }),
+  }),
+
+  castVote: z.object({
+    params: z.object({
+      id: z.string().min(1, "Club ID is required"),
+      proposalId: z.string().min(1, "Proposal ID is required"),
+    }),
+    body: z.object({
+      optionId: z.string().min(1, "Option ID is required"),
+    }),
+  }),
+
+  getClubProposals: z.object({
+    params: z.object({
+      id: z.string().min(1, "Club ID is required"),
+    }),
+  }),
 };
 
 /**

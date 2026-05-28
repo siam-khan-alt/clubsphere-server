@@ -15,6 +15,9 @@ const {
   editClubComment,
   deleteClubComment,
   getCurrentSeason,
+  createProposal,
+  getClubProposals,
+  castVote,
 } = require("../controllers/clubController");
 const { verifyToken, verifyMember } = require("../middleware/authMiddleware");
 const validateRequest = require("../middleware/validateRequest");
@@ -48,6 +51,11 @@ router.delete("/:id/comments/:commentId", verifyToken, validateRequest(clubSchem
 
 // Club Wars routes
 router.get("/club-wars/current-season", getCurrentSeason);
+
+// Proposal routes
+router.post("/:id/proposals", verifyToken, validateRequest(clubSchemas.createProposal), createProposal);
+router.get("/:id/proposals", validateRequest(clubSchemas.getClubProposals), getClubProposals);
+router.post("/:id/proposals/:proposalId/vote", verifyToken, validateRequest(clubSchemas.castVote), castVote);
 
 // Dynamic routes (must be last)
 router.get("/:id", validateRequest(clubSchemas.getClubById), getClubById);
