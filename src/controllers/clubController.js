@@ -956,42 +956,52 @@ const toggleCommentReaction = async (req, res) => {
         }
 
         // Check if user already has a reaction
-        const existingReactionIndex = comment.reactions.findIndex(
+        const existingReaction = comment.reactions.find(
           (r) => r.userEmail === userEmail
         );
 
-        if (existingReactionIndex !== -1) {
-          // User already has a reaction
-          const existingReaction = comment.reactions[existingReactionIndex];
-
+        if (existingReaction) {
           if (existingReaction.type === type) {
-            // Same reaction type - remove it (toggle off)
-            comment.reactions.splice(existingReactionIndex, 1);
+            // Same reaction type - atomically remove it (toggle off)
+            await clubCommentsCollection.updateOne(
+              { _id: new ObjectId(commentId) },
+              {
+                $pull: { reactions: { userEmail: userEmail } },
+                $set: { updatedAt: new Date() },
+              },
+              { session: dbSession }
+            );
           } else {
-            // Different reaction type - update it
-            comment.reactions[existingReactionIndex].type = type;
-            comment.reactions[existingReactionIndex].updatedAt = new Date();
+            // Different reaction type - atomically update it
+            await clubCommentsCollection.updateOne(
+              { _id: new ObjectId(commentId), "reactions.userEmail": userEmail },
+              {
+                $set: {
+                  "reactions.$.type": type,
+                  "reactions.$.updatedAt": new Date(),
+                  updatedAt: new Date(),
+                },
+              },
+              { session: dbSession }
+            );
           }
         } else {
-          // No existing reaction - add new one
-          comment.reactions.push({
-            userEmail: userEmail,
-            type: type,
-            createdAt: new Date(),
-          });
-        }
-
-        // Update the comment
-        await clubCommentsCollection.updateOne(
-          { _id: new ObjectId(commentId) },
-          {
-            $set: {
-              reactions: comment.reactions,
-              updatedAt: new Date(),
+          // No existing reaction - atomically add new one
+          await clubCommentsCollection.updateOne(
+            { _id: new ObjectId(commentId) },
+            {
+              $push: {
+                reactions: {
+                  userEmail: userEmail,
+                  type: type,
+                  createdAt: new Date(),
+                },
+              },
+              $set: { updatedAt: new Date() },
             },
-          },
-          { session: dbSession }
-        );
+            { session: dbSession }
+          );
+        }
       });
     } finally {
       await dbSession.endSession();
@@ -1045,7 +1055,10 @@ const editClubComment = async (req, res) => {
 
     // Update the comment
     await clubCommentsCollection.updateOne(
-      { _id: new ObjectId(commentId) },
+      {
+        _id: new ObjectId(commentId),
+        clubId: clubId,
+      },
       {
         $set: {
           text: text,
@@ -1107,7 +1120,10 @@ const deleteClubComment = async (req, res) => {
     }
 
     // Delete the comment
-    await clubCommentsCollection.deleteOne({ _id: new ObjectId(commentId) });
+    await clubCommentsCollection.deleteOne({
+      _id: new ObjectId(commentId),
+      clubId: clubId,
+    });
 
     res.status(200).send({ message: "Comment deleted successfully." });
   } catch (error) {
