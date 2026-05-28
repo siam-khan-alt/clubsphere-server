@@ -25,6 +25,35 @@ const connectDatabase = async () => {
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
+
+    // Create indexes for new collections to ensure query performance at scale
+    const collections = getCollections();
+
+    // clubProposalsCollection indexes
+    await collections.clubProposalsCollection.createIndex({ clubId: 1 });
+    await collections.clubProposalsCollection.createIndex({ status: 1, votingEndsAt: 1 });
+    await collections.clubProposalsCollection.createIndex({ createdBy: 1 });
+    await collections.clubProposalsCollection.createIndex({ createdAt: -1 });
+
+    // clubCommentsCollection indexes
+    await collections.clubCommentsCollection.createIndex({ clubId: 1, userEmail: 1 });
+    await collections.clubCommentsCollection.createIndex({ clubId: 1, createdAt: -1 });
+    await collections.clubCommentsCollection.createIndex({ "reactions.userEmail": 1 });
+
+    // memberVotingPowerCollection indexes
+    await collections.memberVotingPowerCollection.createIndex({ clubId: 1, userEmail: 1 });
+
+    // clubWarsSeasonsCollection indexes
+    await collections.clubWarsSeasonsCollection.createIndex({ status: 1 });
+    await collections.clubWarsSeasonsCollection.createIndex({ startDate: 1 });
+    await collections.clubWarsSeasonsCollection.createIndex({ endDate: 1 });
+
+    // clubWarEventsCollection indexes
+    await collections.clubWarEventsCollection.createIndex({ seasonId: 1 });
+    await collections.clubWarEventsCollection.createIndex({ clubId: 1 });
+
+    console.log("Database indexes created successfully.");
+
     return db;
   } catch (error) {
     console.error("MongoDB connection error:", error);

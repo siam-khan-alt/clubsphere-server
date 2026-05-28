@@ -1185,7 +1185,7 @@ const calculateVotingPower = async (clubId, userEmail) => {
   try {
     const { clubCommentsCollection, membershipsCollection } = getCollections();
 
-    // Base power = 1 vote per approved member
+    // Base power = 1 vote per approved member (stored as 100 cents)
     const membership = await membershipsCollection.findOne({
       clubId: clubId,
       userEmail: userEmail,
@@ -1196,9 +1196,9 @@ const calculateVotingPower = async (clubId, userEmail) => {
       return 0; // Not a member, no voting power
     }
 
-    let basePower = 1;
+    let basePowerCents = 100; // 1.00 = 100 cents
 
-    // Calculate contribution bonus
+    // Calculate contribution bonus using integer arithmetic (cents)
     const userComments = await clubCommentsCollection.countDocuments({
       clubId: clubId,
       userEmail: userEmail,
@@ -1213,14 +1213,18 @@ const calculateVotingPower = async (clubId, userEmail) => {
 
     const totalReactions = userReactions[0]?.total || 0;
 
-    // Contribution bonus: +0.1 per comment, +0.02 per reaction, capped at +2.0
-    const commentBonus = Math.min(userComments * 0.1, 1.0); // Max 1.0 from comments
-    const reactionBonus = Math.min(totalReactions * 0.02, 1.0); // Max 1.0 from reactions
-    const contributionBonus = Math.min(commentBonus + reactionBonus, 2.0);
+    // Contribution bonus using integer arithmetic (cents):
+    // +0.1 per comment = +10 cents per comment (max 100 cents = 1.0)
+    // +0.02 per reaction = +2 cents per reaction (max 100 cents = 1.0)
+    // Total bonus capped at 200 cents = 2.0
+    const commentBonusCents = Math.min(userComments * 10, 100); // Max 100 cents from comments
+    const reactionBonusCents = Math.min(totalReactions * 2, 100); // Max 100 cents from reactions
+    const contributionBonusCents = Math.min(commentBonusCents + reactionBonusCents, 200);
 
-    const totalPower = basePower + contributionBonus;
+    const totalPowerCents = basePowerCents + contributionBonusCents;
 
-    return Math.round(totalPower * 100) / 100; // Round to 2 decimal places
+    // Convert cents to decimal for display (divide by 100)
+    return totalPowerCents / 100;
   } catch (error) {
     logger.error("Error calculating voting power:", error);
     return 1; // Default to base power on error
@@ -1362,12 +1366,6 @@ const castVote = async (req, res) => {
           throw new Error("Voting period has ended.");
         }
 
-        // Check if user has already voted
-        const existingVote = proposal.votes.find((v) => v.userId === userEmail);
-        if (existingVote) {
-          throw new Error("You have already voted on this proposal.");
-        }
-
         // Calculate user's voting power
         const votingPower = await calculateVotingPower(clubId, userEmail);
 
@@ -1375,34 +1373,38 @@ const castVote = async (req, res) => {
           throw new Error("You do not have voting power for this club.");
         }
 
-        // Find the option and increment its score
+        // Find the option index
         const optionIndex = proposal.options.findIndex((o) => o.id === optionId);
         if (optionIndex === -1) {
           throw new Error("Invalid option ID.");
         }
 
-        // Add the vote
-        proposal.votes.push({
-          userId: userEmail,
-          optionId: optionId,
-          weight: votingPower,
-          votedAt: new Date(),
-        });
-
-        // Increment the option's score
-        proposal.options[optionIndex].votes += votingPower;
-
-        // Update the proposal
-        await clubProposalsCollection.updateOne(
-          { _id: new ObjectId(proposalId) },
+        // Atomic vote insertion with exclusion filter to prevent duplicate votes
+        const updateResult = await clubProposalsCollection.updateOne(
+          { 
+            _id: new ObjectId(proposalId), 
+            "votes.userId": { $ne: userEmail } 
+          },
           {
-            $set: {
-              votes: proposal.votes,
-              options: proposal.options,
+            $push: {
+              votes: {
+                userId: userEmail,
+                optionId: optionId,
+                weight: votingPower,
+                votedAt: new Date(),
+              },
+            },
+            $inc: {
+              [`options.${optionIndex}.votes`]: votingPower,
             },
           },
           { session: dbSession }
         );
+
+        // If no document was modified, user already voted
+        if (updateResult.matchedCount === 0) {
+          throw new Error("You have already voted on this proposal.");
+        }
       });
     } finally {
       await dbSession.endSession();

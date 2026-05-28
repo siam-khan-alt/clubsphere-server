@@ -1,6 +1,7 @@
 const { getCollections } = require("../config/database");
 const logger = require("../utils/logger");
 const { getSocketIo } = require("../utils/socket");
+const { ObjectId } = require("mongodb");
 
 /**
  * Point values for different actions
@@ -41,26 +42,23 @@ const awardPoints = async (clubId, actionType) => {
 
     const points = POINT_VALUES[actionType];
 
-    // Find or create club entry in season
-    const clubEntry = currentSeason.clubs.find((c) => c.clubId === clubId);
+    // Atomic update: Try to increment existing club entry
+    const updateResult = await clubWarsSeasonsCollection.updateOne(
+      { _id: currentSeason._id, "clubs.clubId": clubId },
+      {
+        $inc: {
+          "clubs.$.points": points,
+          "clubs.$.metrics.totalComments": actionType === "post_comment" ? 1 : 0,
+          "clubs.$.metrics.totalReactions": actionType === "give_reaction" ? 1 : 0,
+          "clubs.$.metrics.memberGrowth": actionType === "new_member" ? 1 : 0,
+          "clubs.$.metrics.eventAttendance": actionType === "event_registration" ? 1 : 0,
+          "clubs.$.metrics.totalEvents": actionType === "create_event" ? 1 : 0,
+        },
+      }
+    );
 
-    if (clubEntry) {
-      // Update existing club entry
-      await clubWarsSeasonsCollection.updateOne(
-        { _id: currentSeason._id, "clubs.clubId": clubId },
-        {
-          $inc: {
-            "clubs.$.points": points,
-            "clubs.$.metrics.totalComments": actionType === "post_comment" ? 1 : 0,
-            "clubs.$.metrics.totalReactions": actionType === "give_reaction" ? 1 : 0,
-            "clubs.$.metrics.memberGrowth": actionType === "new_member" ? 1 : 0,
-            "clubs.$.metrics.eventAttendance": actionType === "event_registration" ? 1 : 0,
-            "clubs.$.metrics.totalEvents": actionType === "create_event" ? 1 : 0,
-          },
-        }
-      );
-    } else {
-      // Create new club entry
+    // If no document was modified, club entry doesn't exist - create it atomically
+    if (updateResult.matchedCount === 0) {
       const club = await clubsCollection.findOne({ _id: new ObjectId(clubId) });
 
       if (!club) {
@@ -85,8 +83,9 @@ const awardPoints = async (clubId, actionType) => {
         achievements: [],
       };
 
+      // Use $addToSet to prevent duplicates if concurrent calls occur
       await clubWarsSeasonsCollection.updateOne(
-        { _id: currentSeason._id },
+        { _id: currentSeason._id, "clubs.clubId": { $ne: clubId } },
         { $push: { clubs: newClubEntry } }
       );
     }
