@@ -54,6 +54,7 @@ const getCollections = () => {
     userAchievementsCollection: database.collection("userAchievements"),
     chatRoomsCollection: database.collection("chatRooms"),
     messagesCollection: database.collection("messages"),
+    clubCommentsCollection: database.collection("clubComments"),
   };
 };
 

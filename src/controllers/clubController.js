@@ -851,6 +851,271 @@ const leaveClub = async (req, res) => {
   }
 };
 
+/**
+ * Get all comments for a club (public access)
+ */
+const getClubComments = async (req, res) => {
+  const clubId = req.params.id;
+  const { clubCommentsCollection } = getCollections();
+
+  try {
+    const comments = await clubCommentsCollection
+      .find({ clubId: clubId })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    res.status(200).send(comments);
+  } catch (error) {
+    logger.error("Error fetching club comments:", error);
+    res.status(500).send({ message: "Failed to fetch comments." });
+  }
+};
+
+/**
+ * Add a comment to a club (only approved members or manager)
+ */
+const addClubComment = async (req, res) => {
+  const clubId = req.params.id;
+  const userEmail = req.tokenEmail;
+  const { text } = req.body;
+  const { clubCommentsCollection, clubsCollection, membershipsCollection } = getCollections();
+
+  try {
+    // Check if user is the club manager or an approved member
+    const club = await clubsCollection.findOne({ _id: new ObjectId(clubId) });
+
+    if (!club) {
+      return res.status(404).send({ message: "Club not found." });
+    }
+
+    // Check if user is manager
+    const isManager = club.managerEmail === userEmail;
+
+    // Check if user is an approved member
+    const membership = await membershipsCollection.findOne({
+      clubId: clubId,
+      userEmail: userEmail,
+      status: "active",
+    });
+
+    if (!isManager && !membership) {
+      return res.status(403).send({
+        message: "Only approved club members or the manager can comment.",
+      });
+    }
+
+    // Get user details for avatar and name
+    const { usersCollection } = getCollections();
+    const user = await usersCollection.findOne({ email: userEmail });
+
+    const newComment = {
+      clubId: clubId,
+      userEmail: userEmail,
+      userName: user?.name || userEmail.split("@")[0],
+      userAvatar: user?.photoURL || null,
+      text: text,
+      reactions: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await clubCommentsCollection.insertOne(newComment);
+
+    res.status(201).send({
+      message: "Comment added successfully.",
+      comment: newComment,
+    });
+  } catch (error) {
+    logger.error("Error adding club comment:", error);
+    res.status(500).send({ message: "Failed to add comment." });
+  }
+};
+
+/**
+ * Toggle a reaction on a comment (any authenticated user)
+ */
+const toggleCommentReaction = async (req, res) => {
+  const clubId = req.params.id;
+  const commentId = req.params.commentId;
+  const { type } = req.body;
+  const userEmail = req.tokenEmail;
+  const { clubCommentsCollection } = getCollections();
+
+  try {
+    const dbSession = await startSession();
+    try {
+      await dbSession.withTransaction(async () => {
+        // Find the comment
+        const comment = await clubCommentsCollection.findOne(
+          { _id: new ObjectId(commentId), clubId: clubId },
+          { session: dbSession }
+        );
+
+        if (!comment) {
+          throw new Error("Comment not found.");
+        }
+
+        // Check if user already has a reaction
+        const existingReactionIndex = comment.reactions.findIndex(
+          (r) => r.userEmail === userEmail
+        );
+
+        if (existingReactionIndex !== -1) {
+          // User already has a reaction
+          const existingReaction = comment.reactions[existingReactionIndex];
+
+          if (existingReaction.type === type) {
+            // Same reaction type - remove it (toggle off)
+            comment.reactions.splice(existingReactionIndex, 1);
+          } else {
+            // Different reaction type - update it
+            comment.reactions[existingReactionIndex].type = type;
+            comment.reactions[existingReactionIndex].updatedAt = new Date();
+          }
+        } else {
+          // No existing reaction - add new one
+          comment.reactions.push({
+            userEmail: userEmail,
+            type: type,
+            createdAt: new Date(),
+          });
+        }
+
+        // Update the comment
+        await clubCommentsCollection.updateOne(
+          { _id: new ObjectId(commentId) },
+          {
+            $set: {
+              reactions: comment.reactions,
+              updatedAt: new Date(),
+            },
+          },
+          { session: dbSession }
+        );
+      });
+    } finally {
+      await dbSession.endSession();
+    }
+
+    // Fetch updated comment
+    const updatedComment = await clubCommentsCollection.findOne({
+      _id: new ObjectId(commentId),
+    });
+
+    res.status(200).send({
+      message: "Reaction updated successfully.",
+      comment: updatedComment,
+    });
+  } catch (error) {
+    logger.error("Error toggling comment reaction:", error);
+    if (error.message === "Comment not found.") {
+      return res.status(404).send({ message: error.message });
+    }
+    res.status(500).send({ message: "Failed to update reaction." });
+  }
+};
+
+/**
+ * Edit a comment (only comment owner)
+ */
+const editClubComment = async (req, res) => {
+  const clubId = req.params.id;
+  const commentId = req.params.commentId;
+  const userEmail = req.tokenEmail;
+  const { text } = req.body;
+  const { clubCommentsCollection, clubsCollection } = getCollections();
+
+  try {
+    // Find the comment
+    const comment = await clubCommentsCollection.findOne({
+      _id: new ObjectId(commentId),
+      clubId: clubId,
+    });
+
+    if (!comment) {
+      return res.status(404).send({ message: "Comment not found." });
+    }
+
+    // Check if user is the comment owner
+    if (comment.userEmail !== userEmail) {
+      return res.status(403).send({
+        message: "Only the comment owner can edit it.",
+      });
+    }
+
+    // Update the comment
+    await clubCommentsCollection.updateOne(
+      { _id: new ObjectId(commentId) },
+      {
+        $set: {
+          text: text,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    // Fetch updated comment
+    const updatedComment = await clubCommentsCollection.findOne({
+      _id: new ObjectId(commentId),
+    });
+
+    res.status(200).send({
+      message: "Comment updated successfully.",
+      comment: updatedComment,
+    });
+  } catch (error) {
+    logger.error("Error editing club comment:", error);
+    res.status(500).send({ message: "Failed to edit comment." });
+  }
+};
+
+/**
+ * Delete a comment (comment owner or club manager)
+ */
+const deleteClubComment = async (req, res) => {
+  const clubId = req.params.id;
+  const commentId = req.params.commentId;
+  const userEmail = req.tokenEmail;
+  const { clubCommentsCollection, clubsCollection } = getCollections();
+
+  try {
+    // Find the comment
+    const comment = await clubCommentsCollection.findOne({
+      _id: new ObjectId(commentId),
+      clubId: clubId,
+    });
+
+    if (!comment) {
+      return res.status(404).send({ message: "Comment not found." });
+    }
+
+    // Find the club to check if user is manager
+    const club = await clubsCollection.findOne({ _id: new ObjectId(clubId) });
+
+    if (!club) {
+      return res.status(404).send({ message: "Club not found." });
+    }
+
+    // Check if user is comment owner or club manager
+    const isOwner = comment.userEmail === userEmail;
+    const isManager = club.managerEmail === userEmail;
+
+    if (!isOwner && !isManager) {
+      return res.status(403).send({
+        message: "Only the comment owner or club manager can delete it.",
+      });
+    }
+
+    // Delete the comment
+    await clubCommentsCollection.deleteOne({ _id: new ObjectId(commentId) });
+
+    res.status(200).send({ message: "Comment deleted successfully." });
+  } catch (error) {
+    logger.error("Error deleting club comment:", error);
+    res.status(500).send({ message: "Failed to delete comment." });
+  }
+};
+
 module.exports = {
   createClub,
   getAdminClubs,
@@ -869,4 +1134,9 @@ module.exports = {
   getClubMembers,
   updateMembershipStatus,
   getManagerStats,
+  getClubComments,
+  addClubComment,
+  toggleCommentReaction,
+  editClubComment,
+  deleteClubComment,
 };

@@ -121,6 +121,50 @@ const clubSchemas = {
       id: z.string().min(1, "Club ID is required"),
     }),
   }),
+
+  addClubComment: z.object({
+    params: z.object({
+      id: z.string().min(1, "Club ID is required"),
+    }),
+    body: z.object({
+      text: z.string().min(1, "Comment text is required").max(1000, "Comment must be less than 1000 characters"),
+    }),
+  }),
+
+  toggleCommentReaction: z.object({
+    params: z.object({
+      id: z.string().min(1, "Club ID is required"),
+      commentId: z.string().min(1, "Comment ID is required"),
+    }),
+    body: z.object({
+      type: z.enum(["like", "love", "haha", "wow"], {
+        errorMap: () => ({ message: "Reaction type must be like, love, haha, or wow" }),
+      }),
+    }),
+  }),
+
+  getClubComments: z.object({
+    params: z.object({
+      id: z.string().min(1, "Club ID is required"),
+    }),
+  }),
+
+  editClubComment: z.object({
+    params: z.object({
+      id: z.string().min(1, "Club ID is required"),
+      commentId: z.string().min(1, "Comment ID is required"),
+    }),
+    body: z.object({
+      text: z.string().min(1, "Comment text is required").max(1000, "Comment must be less than 1000 characters"),
+    }),
+  }),
+
+  deleteClubComment: z.object({
+    params: z.object({
+      id: z.string().min(1, "Club ID is required"),
+      commentId: z.string().min(1, "Comment ID is required"),
+    }),
+  }),
 };
 
 /**

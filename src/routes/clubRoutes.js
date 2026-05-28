@@ -8,6 +8,11 @@ const {
   leaveClub,
   getMemberClubs,
   getPopularClubs,
+  getClubComments,
+  addClubComment,
+  toggleCommentReaction,
+  editClubComment,
+  deleteClubComment,
 } = require("../controllers/clubController");
 const { verifyToken, verifyMember } = require("../middleware/authMiddleware");
 const validateRequest = require("../middleware/validateRequest");
@@ -22,6 +27,13 @@ router.get("/popular-clubsManagers", getPopularClubs);
 router.get("/member/clubs", verifyToken, verifyMember, getMemberClubs);
 router.post("/join/:id", verifyToken, verifyMember, validateRequest(clubSchemas.joinClub), joinClub);
 router.post("/leave/:id", verifyToken, verifyMember, validateRequest(clubSchemas.leaveClub), leaveClub);
+
+// Comment routes
+router.get("/:id/comments", validateRequest(clubSchemas.getClubComments), getClubComments);
+router.post("/:id/comments", verifyToken, validateRequest(clubSchemas.addClubComment), addClubComment);
+router.post("/:id/comments/:commentId/react", verifyToken, validateRequest(clubSchemas.toggleCommentReaction), toggleCommentReaction);
+router.patch("/:id/comments/:commentId", verifyToken, validateRequest(clubSchemas.editClubComment), editClubComment);
+router.delete("/:id/comments/:commentId", verifyToken, validateRequest(clubSchemas.deleteClubComment), deleteClubComment);
 
 // Dynamic routes (must be last)
 router.get("/:id", validateRequest(clubSchemas.getClubById), getClubById);
