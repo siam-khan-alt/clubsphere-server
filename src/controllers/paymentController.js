@@ -306,9 +306,8 @@ const handleStripeWebhook = async (req, res) => {
       if (club) {
         logger.info(`Payment succeeded for club ${club._id}, subscription ${subscriptionId}`);
 
-        // Calculate new expiration date (30 days from now)
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 30);
+        // Use Stripe's period_end from the invoice for accurate expiration date
+        const expiresAt = new Date(invoice.period_end * 1000); // Convert Unix timestamp to Date
 
         const dbSession = await startSession();
         try {

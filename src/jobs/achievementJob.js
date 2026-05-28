@@ -16,21 +16,38 @@ const startAchievementJob = () => {
     try {
       logger.info("Running achievement check job...");
       const { usersCollection } = getCollections();
-      
-      // Get all active users
-      const users = await usersCollection.find({}).toArray();
-      
+
       let totalNewAchievements = 0;
-      
-      for (const user of users) {
-        const newAchievements = await checkAndAwardAchievements(user.email);
-        totalNewAchievements += newAchievements.length;
-        
-        if (newAchievements.length > 0) {
-          logger.info(`User ${user.email} earned ${newAchievements.length} new achievement(s)`);
+      let skip = 0;
+      const limit = 100; // Process 100 users at a time
+      let hasMore = true;
+
+      // Process users in batches to avoid memory issues
+      while (hasMore) {
+        const users = await usersCollection
+          .find({})
+          .skip(skip)
+          .limit(limit)
+          .toArray();
+
+        if (users.length === 0) {
+          hasMore = false;
+          break;
         }
+
+        for (const user of users) {
+          const newAchievements = await checkAndAwardAchievements(user.email);
+          totalNewAchievements += newAchievements.length;
+
+          if (newAchievements.length > 0) {
+            logger.info(`User ${user.email} earned ${newAchievements.length} new achievement(s)`);
+          }
+        }
+
+        skip += limit;
+        logger.info(`Processed ${skip} users so far...`);
       }
-      
+
       logger.info(`Achievement check job completed. Total new achievements awarded: ${totalNewAchievements}`);
     } catch (error) {
       logger.error("Error in achievement check job:", error);

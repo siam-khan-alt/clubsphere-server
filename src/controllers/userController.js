@@ -204,22 +204,7 @@ const deleteUser = async (req, res) => {
         .send({ message: "User not found in database." });
     }
 
-    // Delete from Firebase
-    try {
-      const firebaseUser = await admin.auth().getUserByEmail(email);
-      await admin.auth().deleteUser(firebaseUser.uid);
-    } catch (firebaseError) {
-      if (
-        firebaseError.code === "auth/user-not-found" ||
-        firebaseError.errorInfo?.code === "auth/user-not-found"
-      ) {
-        logger.warn(`Firebase user not found for ${email}, continuing with DB deletion`);
-      } else {
-        throw firebaseError;
-      }
-    }
-
-    // Cascade delete from MongoDB with transaction
+    // Cascade delete from MongoDB with transaction first
     const session = await startSession();
     try {
       await session.withTransaction(async () => {
@@ -231,6 +216,21 @@ const deleteUser = async (req, res) => {
       });
     } finally {
       await session.endSession();
+    }
+
+    // Delete from Firebase after successful DB deletion
+    try {
+      const firebaseUser = await admin.auth().getUserByEmail(email);
+      await admin.auth().deleteUser(firebaseUser.uid);
+    } catch (firebaseError) {
+      if (
+        firebaseError.code === "auth/user-not-found" ||
+        firebaseError.errorInfo?.code === "auth/user-not-found"
+      ) {
+        logger.warn(`Firebase user not found for ${email}, but DB deletion succeeded`);
+      } else {
+        logger.error(`Failed to delete Firebase user for ${email}, but DB deletion succeeded:`, firebaseError);
+      }
     }
 
     res.send({

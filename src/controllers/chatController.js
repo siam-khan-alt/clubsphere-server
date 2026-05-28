@@ -166,8 +166,12 @@ const removeParticipantFromRoom = async (roomId, userEmail) => {
 
 /**
  * Save message to database
+ * @param {string} roomId - Room ID
+ * @param {string} senderEmail - Sender email
+ * @param {string} messageText - Message text
+ * @param {object} session - Optional MongoDB session for transaction isolation
  */
-const saveMessage = async (roomId, senderEmail, messageText) => {
+const saveMessage = async (roomId, senderEmail, messageText, session = null) => {
   const { messagesCollection, chatRoomsCollection } = getCollections();
 
   try {
@@ -178,12 +182,15 @@ const saveMessage = async (roomId, senderEmail, messageText) => {
       createdAt: new Date(),
     };
 
-    const result = await messagesCollection.insertOne(newMessage);
+    const insertOptions = session ? { session } : {};
+    const result = await messagesCollection.insertOne(newMessage, insertOptions);
 
     // Update room's updatedAt timestamp
+    const updateOptions = session ? { session } : {};
     await chatRoomsCollection.updateOne(
       { _id: new ObjectId(roomId) },
-      { $set: { updatedAt: new Date() } }
+      { $set: { updatedAt: new Date() } },
+      updateOptions
     );
 
     return { ...newMessage, _id: result.insertedId };

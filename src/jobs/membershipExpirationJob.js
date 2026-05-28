@@ -139,6 +139,12 @@ const checkExpiringMemberships = async () => {
             { $set: { status: "expired", updatedAt: new Date() } }
           );
 
+          // Remove user from club's members array to maintain data consistency
+          await clubsCollection.updateOne(
+            { _id: membership.clubId },
+            { $pull: { members: membership.userEmail } }
+          );
+
           // Send notification
           await notifyMembershipExpiration(
             membership.userEmail,
@@ -156,7 +162,7 @@ const checkExpiringMemberships = async () => {
           );
 
           logger.info(
-            `Expired membership for ${membership.userEmail} in ${club.clubName}`
+            `Expired membership for ${membership.userEmail} in ${club.clubName} and removed from members array`
           );
         }
       } catch (error) {

@@ -93,10 +93,11 @@ const initializeAchievements = async () => {
     ];
 
     for (const achievement of defaultAchievements) {
-      const existing = await achievementsCollection.findOne({ id: achievement.id });
-      if (!existing) {
-        await achievementsCollection.insertOne(achievement);
-      }
+      await achievementsCollection.findOneAndUpdate(
+        { id: achievement.id },
+        { $setOnInsert: achievement },
+        { upsert: true }
+      );
     }
 
     logger.info("Achievements initialized successfully");

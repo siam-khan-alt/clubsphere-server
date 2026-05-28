@@ -442,7 +442,7 @@ const createEventPaymentSession = async (req, res) => {
 const registerForEvent = async (req, res) => {
   const eventId = req.params.eventId;
   const userEmail = req.tokenEmail;
-  const { eventsCollection, eventRegistrationsCollection } = getCollections();
+  const { eventsCollection, eventRegistrationsCollection, usersCollection } = getCollections();
 
   if (!ObjectId.isValid(eventId)) {
     return res.status(400).send({ message: "Invalid Event ID." });
@@ -494,12 +494,16 @@ const registerForEvent = async (req, res) => {
     };
     await eventRegistrationsCollection.insertOne(newRegistration);
 
+    // Fetch user for name
+    const user = await usersCollection.findOne({ email: userEmail });
+    const userName = user?.name || userEmail.split("@")[0];
+
     // Send notification
-    await notifyEventRegistration(userEmail, event.title, eventId, event.date);
+    await notifyEventRegistration(userEmail, event.title, eventId, event.eventDate);
 
     // Send email confirmation
     try {
-      await emailService.sendEventRegistrationEmail(userEmail, userName, event.title, event.date, event.location);
+      await emailService.sendEventRegistrationEmail(userEmail, userName, event.title, event.eventDate, event.location);
     } catch (emailError) {
       logger.error("Failed to send event registration email:", emailError);
     }
