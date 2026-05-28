@@ -11,10 +11,10 @@ const {
 } = require("../controllers/eventController");
 const { verifyToken, verifyMember } = require("../middleware/authMiddleware");
 const validateRequest = require("../middleware/validateRequest");
-const { eventSchemas } = require("../validators/schemas");
+const { eventSchemas, querySchemas } = require("../validators/schemas");
 
 // Public routes (specific routes first, then dynamic)
-router.get("/", getPublicEvents);
+router.get("/", validateRequest(querySchemas.getPublicEvents), getPublicEvents);
 
 // Member routes (specific routes before dynamic)
 router.get("/member/events", verifyToken, verifyMember, getMemberEvents);

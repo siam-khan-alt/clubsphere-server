@@ -9,7 +9,7 @@ const {
 } = require("../controllers/userController");
 const { verifyToken, verifyMember } = require("../middleware/authMiddleware");
 const validateRequest = require("../middleware/validateRequest");
-const { userSchemas } = require("../validators/schemas");
+const { userSchemas, querySchemas } = require("../validators/schemas");
 
 // Public routes
 router.post("/register", validateRequest(userSchemas.register), registerUser);
@@ -17,9 +17,9 @@ router.post("/google-login", validateRequest(userSchemas.googleLogin), googleLog
 
 // Authenticated routes
 router.patch("/update", verifyToken, validateRequest(userSchemas.updateUser), updateUser);
-router.get("/role", verifyToken, getUserRole);
+router.get("/role", verifyToken, validateRequest(querySchemas.getUserRole), getUserRole);
 
 // Member only routes
-router.get("/member/stats-and-upcoming-events", verifyToken, verifyMember, getMemberStatsAndUpcomingEvents);
+router.get("/member/stats-and-upcoming-events", verifyToken, verifyMember, validateRequest(querySchemas.getStats), getMemberStatsAndUpcomingEvents);
 
 module.exports = router;

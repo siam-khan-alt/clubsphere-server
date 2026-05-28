@@ -76,6 +76,11 @@ const trackReferralSignup = async (req, res) => {
       return res.status(400).send({ message: "Invalid referral code" });
     }
 
+    // Check for self-referral
+    if (referral.inviterEmail === userEmail) {
+      return res.status(400).send({ message: "Cannot refer yourself" });
+    }
+
     // Check if user already referred
     const alreadyReferred = referral.invitedUsers.some(
       (user) => user.email === userEmail
@@ -85,7 +90,24 @@ const trackReferralSignup = async (req, res) => {
       return res.status(400).send({ message: "You have already used this referral code" });
     }
 
-    // Add user to invited users
+    // Get IP address and device fingerprint for fraud prevention
+    const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+    const userAgent = req.headers['user-agent'] || 'unknown';
+
+    // Check for IP rate limiting (max 5 referrals per IP per day)
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentReferralsFromIP = await referralsCollection.countDocuments({
+      referralCode: referralCode,
+      'invitedUsers.joinedAt': { $gte: oneDayAgo },
+      'invitedUsers.ipAddress': ipAddress
+    });
+
+    if (recentReferralsFromIP >= 5) {
+      logger.warn(`Rate limit exceeded for IP ${ipAddress} on referral code ${referralCode}`);
+      return res.status(429).send({ message: "Too many referrals from this IP address. Please try again later." });
+    }
+
+    // Add user to invited users with IP and device tracking
     await referralsCollection.updateOne(
       { _id: referral._id },
       {
@@ -94,6 +116,8 @@ const trackReferralSignup = async (req, res) => {
             email: userEmail,
             joinedAt: new Date(),
             hasMadeFirstPayment: false,
+            ipAddress: ipAddress,
+            userAgent: userAgent,
           },
         },
         $inc: {

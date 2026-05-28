@@ -18,10 +18,10 @@ const {
 } = require("../controllers/eventController");
 const { verifyToken, verifyManager } = require("../middleware/authMiddleware");
 const validateRequest = require("../middleware/validateRequest");
-const { clubSchemas, eventSchemas, paymentSchemas } = require("../validators/schemas");
+const { clubSchemas, eventSchemas, paymentSchemas, querySchemas } = require("../validators/schemas");
 
 // Stats route
-router.get("/stats", verifyToken, verifyManager, getManagerStats);
+router.get("/stats", verifyToken, verifyManager, validateRequest(querySchemas.getStats), getManagerStats);
 
 // Club management routes
 router.get("/clubs", verifyToken, verifyManager, getManagerClubs);

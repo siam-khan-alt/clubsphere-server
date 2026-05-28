@@ -256,6 +256,34 @@ const querySchemas = {
       sort: z.enum(["fee_asc", "fee_desc", "newest", "oldest"]).optional(),
     }),
   }),
+
+  getUserRole: z.object({
+    query: z.object({}).optional(),
+  }),
+
+  getStats: z.object({
+    query: z.object({}).optional(),
+  }),
+
+  getPublicEvents: z.object({
+    query: z.object({
+      search: z.string().optional(),
+      sort: z.string().optional(),
+      order: z.enum(["asc", "desc"]).optional(),
+    }),
+  }),
+
+  getAllUsers: z.object({
+    query: z.object({}).optional(),
+  }),
+
+  getAdminClubs: z.object({
+    query: z.object({}).optional(),
+  }),
+
+  getAdminPayments: z.object({
+    query: z.object({}).optional(),
+  }),
 };
 
 module.exports = {
