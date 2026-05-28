@@ -246,6 +246,30 @@ const referralSchemas = {
 };
 
 /**
+ * Chat-related validation schemas
+ */
+const chatSchemas = {
+  createDirectRoom: z.object({
+    body: z.object({
+      targetEmail: z.string().email("Invalid email format"),
+    }),
+  }),
+
+  sendMessage: z.object({
+    body: z.object({
+      roomId: z.string().min(1, "Room ID is required"),
+      messageText: z.string().min(1, "Message text is required").max(5000, "Message too long"),
+    }),
+  }),
+
+  getRoomMessages: z.object({
+    params: z.object({
+      roomId: z.string().min(1, "Room ID is required"),
+    }),
+  }),
+};
+
+/**
  * Query validation schemas
  */
 const querySchemas = {
@@ -293,5 +317,6 @@ module.exports = {
   paymentSchemas,
   subscriptionSchemas,
   referralSchemas,
+  chatSchemas,
   querySchemas,
 };

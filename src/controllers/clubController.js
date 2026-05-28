@@ -4,6 +4,7 @@ const logger = require("../config/logger");
 const { notifyClubJoin, notifyMembershipStatusChange } = require("./notificationController");
 const emailService = require("../utils/emailService");
 const { deleteClubCascade } = require("../utils/cascadeDeleteService");
+const { createGroupRoom, addParticipantToRoom } = require("./chatController");
 
 /**
  * Create a new club (manager only)
@@ -58,6 +59,9 @@ const createClub = async (req, res) => {
     };
 
     const result = await clubsCollection.insertOne(newClub);
+
+    // Create group chat room for the club
+    await createGroupRoom(result.insertedId.toString(), name, managerEmail);
 
     res.status(201).json({
       message:
@@ -456,7 +460,7 @@ const joinClub = async (req, res) => {
   const clubId = req.params.id;
   const userEmail = req.tokenEmail;
   const { paymentStatus } = req.body;
-  const { clubsCollection, membershipsCollection } = getCollections();
+  const { clubsCollection, membershipsCollection, chatRoomsCollection } = getCollections();
 
   if (!ObjectId.isValid(clubId)) {
     return res.status(400).send({ message: "Invalid Club ID." });
@@ -514,6 +518,15 @@ const joinClub = async (req, res) => {
       logger.warn(
         `Club ${clubId} members array was likely already updated for ${userEmail}.`
       );
+    }
+
+    // Add user to club's group chat room
+    const chatRoom = await chatRoomsCollection.findOne({
+      clubId: clubId,
+      type: "group",
+    });
+    if (chatRoom) {
+      await addParticipantToRoom(chatRoom._id.toString(), userEmail);
     }
 
     // Send notification

@@ -1,5 +1,7 @@
 require("dotenv").config();
 const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
 const cors = require("cors");
 const { connectDatabase, getCollections, getFirebaseAdmin } = require("./src/config");
 const { verifyToken, verifyAdmin, verifyManager, verifyMember } = require("./src/middleware/authMiddleware");
@@ -19,9 +21,26 @@ const notificationRoutes = require("./src/routes/notificationRoutes");
 const subscriptionRoutes = require("./src/routes/subscriptionRoutes");
 const referralRoutes = require("./src/routes/referralRoutes");
 const achievementRoutes = require("./src/routes/achievementRoutes");
+const chatRoutes = require("./src/routes/chatRoutes");
+const { saveMessage } = require("./src/controllers/chatController");
 
 const app = express();
 const port = process.env.PORT || 5000;
+
+// Create HTTP server for Socket.io
+const server = http.createServer(app);
+
+// Initialize Socket.io
+const io = new Server(server, {
+  cors: {
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "https://clubsphere-client.vercel.app",
+    ],
+    credentials: true,
+  },
+});
 
 app.use(
   cors({
@@ -79,6 +98,9 @@ app.use("/referrals", generalLimiter, referralRoutes);
 logger.info("- /achievements -> achievementRoutes (general limiter)");
 app.use("/achievements", generalLimiter, achievementRoutes);
 
+logger.info("- /chat -> chatRoutes (general limiter)");
+app.use("/chat", generalLimiter, chatRoutes);
+
 // Mount webhook with raw body parsing for Stripe signature verification
 logger.info("- /webhook -> webhookRouter (webhook limiter)");
 app.use("/webhook", express.raw({ type: "application/json" }), webhookLimiter, webhookRouter);
@@ -94,6 +116,46 @@ app.use(notFoundHandler);
 // Global error handler (must be last)
 app.use(errorHandler);
 
+// Socket.io connection handling
+io.on("connection", (socket) => {
+  logger.info(`User connected: ${socket.id}`);
+
+  // Join a chat room
+  socket.on("join_room", (roomId) => {
+    socket.join(roomId);
+    logger.info(`Socket ${socket.id} joined room ${roomId}`);
+  });
+
+  // Send a message to a room
+  socket.on("send_message", async (data) => {
+    try {
+      const { roomId, senderEmail, messageText } = data;
+
+      // Save message to database
+      const newMessage = await saveMessage(roomId, senderEmail, messageText);
+
+      // Broadcast message to all users in the room
+      io.to(roomId).emit("receive_message", newMessage);
+
+      logger.info(`Message sent to room ${roomId} by ${senderEmail}`);
+    } catch (error) {
+      logger.error("Error sending message:", error);
+      socket.emit("error", { message: "Failed to send message" });
+    }
+  });
+
+  // Leave a room
+  socket.on("leave_room", (roomId) => {
+    socket.leave(roomId);
+    logger.info(`Socket ${socket.id} left room ${roomId}`);
+  });
+
+  // Disconnect
+  socket.on("disconnect", () => {
+    logger.info(`User disconnected: ${socket.id}`);
+  });
+});
+
 async function run() {
   try {
     await connectDatabase();
@@ -108,7 +170,7 @@ async function run() {
     // Start achievement job
     startAchievementJob();
 
-    app.listen(port, () => {
+    server.listen(port, () => {
       logger.info(`ClubSphere Server listening on port ${port}`);
       logger.info("\nRegistered Routes:");
       logger.info("\nUser Routes:");
@@ -159,6 +221,14 @@ async function run() {
       logger.info("- PATCH /notifications/:notificationId/read");
       logger.info("- PATCH /notifications/read-all");
       logger.info("- DELETE /notifications/:notificationId");
+      logger.info("\nChat Routes:");
+      logger.info("- GET /chat/rooms");
+      logger.info("- GET /chat/rooms/:roomId/messages");
+      logger.info("- POST /chat/rooms/direct");
+      logger.info("\nSocket.io Events:");
+      logger.info("- join_room");
+      logger.info("- send_message");
+      logger.info("- leave_room");
     });
   } catch (error) {
     logger.error("Failed to start server:", error);

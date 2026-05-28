@@ -52,6 +52,8 @@ const getCollections = () => {
     referralsCollection: database.collection("referrals"),
     achievementsCollection: database.collection("achievements"),
     userAchievementsCollection: database.collection("userAchievements"),
+    chatRoomsCollection: database.collection("chatRooms"),
+    messagesCollection: database.collection("messages"),
   };
 };
 
