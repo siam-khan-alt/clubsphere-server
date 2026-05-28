@@ -6,6 +6,7 @@ const emailService = require("../utils/emailService");
 const { deleteClubCascade } = require("../utils/cascadeDeleteService");
 const { createGroupRoom, addParticipantToRoom, removeParticipantFromRoom } = require("./chatController");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const { awardPoints } = require("../services/scoreTrackerService");
 
 /**
  * Create a new club (manager only)
@@ -530,6 +531,9 @@ const joinClub = async (req, res) => {
       await dbSession.endSession();
     }
 
+    // Award points for new member
+    await awardPoints(clubId, "new_member");
+
     // Add user to club's group chat room
     const chatRoom = await chatRoomsCollection.findOne({
       clubId: clubId,
@@ -921,6 +925,9 @@ const addClubComment = async (req, res) => {
 
     await clubCommentsCollection.insertOne(newComment);
 
+    // Award points for posting a comment
+    await awardPoints(clubId, "post_comment");
+
     res.status(201).send({
       message: "Comment added successfully.",
       comment: newComment,
@@ -1006,6 +1013,9 @@ const toggleCommentReaction = async (req, res) => {
     } finally {
       await dbSession.endSession();
     }
+
+    // Award points for giving a reaction
+    await awardPoints(clubId, "give_reaction");
 
     // Fetch updated comment
     const updatedComment = await clubCommentsCollection.findOne({
@@ -1132,6 +1142,39 @@ const deleteClubComment = async (req, res) => {
   }
 };
 
+/**
+ * Get current active season for Club Wars
+ */
+const getCurrentSeason = async (req, res) => {
+  try {
+    const { clubWarsSeasonsCollection } = getCollections();
+
+    const currentSeason = await clubWarsSeasonsCollection.findOne({
+      status: "active",
+    });
+
+    if (!currentSeason) {
+      return res.status(404).send({ message: "No active season found." });
+    }
+
+    // Sort clubs by points descending
+    const sortedClubs = currentSeason.clubs.sort((a, b) => b.points - a.points);
+
+    res.status(200).send({
+      season: {
+        seasonName: currentSeason.seasonName,
+        startDate: currentSeason.startDate,
+        endDate: currentSeason.endDate,
+        status: currentSeason.status,
+      },
+      leaderboard: sortedClubs,
+    });
+  } catch (error) {
+    logger.error("Error fetching current season:", error);
+    res.status(500).send({ message: "Failed to fetch current season." });
+  }
+};
+
 module.exports = {
   createClub,
   getAdminClubs,
@@ -1155,4 +1198,5 @@ module.exports = {
   toggleCommentReaction,
   editClubComment,
   deleteClubComment,
+  getCurrentSeason,
 };

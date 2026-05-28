@@ -24,6 +24,7 @@ const referralRoutes = require("./src/routes/referralRoutes");
 const achievementRoutes = require("./src/routes/achievementRoutes");
 const chatRoutes = require("./src/routes/chatRoutes");
 const { saveMessage } = require("./src/controllers/chatController");
+const { setSocketIo } = require("./src/utils/socket");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -42,6 +43,9 @@ const io = new Server(server, {
     credentials: true,
   },
 });
+
+// Set socket instance globally for use in services
+setSocketIo(io);
 
 app.use(
   cors({

@@ -55,6 +55,8 @@ const getCollections = () => {
     chatRoomsCollection: database.collection("chatRooms"),
     messagesCollection: database.collection("messages"),
     clubCommentsCollection: database.collection("clubComments"),
+    clubWarsSeasonsCollection: database.collection("clubWarsSeasons"),
+    clubWarEventsCollection: database.collection("clubWarEvents"),
   };
 };
 

@@ -14,6 +14,7 @@ const {
   toggleCommentReaction,
   editClubComment,
   deleteClubComment,
+  getCurrentSeason,
 } = require("../controllers/clubController");
 const { verifyToken, verifyMember } = require("../middleware/authMiddleware");
 const validateRequest = require("../middleware/validateRequest");
@@ -44,6 +45,9 @@ router.post("/:id/comments", verifyToken, validateRequest(clubSchemas.addClubCom
 router.post("/:id/comments/:commentId/react", verifyToken, reactionRateLimit, validateRequest(clubSchemas.toggleCommentReaction), toggleCommentReaction);
 router.patch("/:id/comments/:commentId", verifyToken, validateRequest(clubSchemas.editClubComment), editClubComment);
 router.delete("/:id/comments/:commentId", verifyToken, validateRequest(clubSchemas.deleteClubComment), deleteClubComment);
+
+// Club Wars routes
+router.get("/club-wars/current-season", getCurrentSeason);
 
 // Dynamic routes (must be last)
 router.get("/:id", validateRequest(clubSchemas.getClubById), getClubById);

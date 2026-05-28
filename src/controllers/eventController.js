@@ -5,6 +5,7 @@ const { notifyEventRegistration } = require("./notificationController");
 const emailService = require("../utils/emailService");
 const { generateEventICS } = require("../utils/calendarService");
 const { deleteEventCascade } = require("../utils/cascadeDeleteService");
+const { awardPoints } = require("../services/scoreTrackerService");
 
 /**
  * Get manager's events (manager only)
@@ -148,6 +149,9 @@ const createEvent = async (req, res) => {
     } finally {
       await dbSession.endSession();
     }
+
+    // Award points for creating an event
+    await awardPoints(clubId, "create_event");
 
     res.status(201).send({
       message: "Event created successfully.",
@@ -493,6 +497,9 @@ const registerForEvent = async (req, res) => {
       registeredAt: new Date(),
     };
     await eventRegistrationsCollection.insertOne(newRegistration);
+
+    // Award points for event registration
+    await awardPoints(event.clubId, "event_registration");
 
     // Fetch user for name
     const user = await usersCollection.findOne({ email: userEmail });
