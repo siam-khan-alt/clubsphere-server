@@ -120,13 +120,38 @@ app.use(errorHandler);
 io.on("connection", (socket) => {
   logger.info(`User connected: ${socket.id}`);
 
-  // Join a chat room
-  socket.on("join_room", (roomId) => {
-    socket.join(roomId);
-    logger.info(`Socket ${socket.id} joined room ${roomId}`);
+  // Join a chat room (with authorization check)
+  socket.on("join_room", async (roomId) => {
+    try {
+      const userEmail = socket.handshake.auth.email;
+      
+      if (!userEmail) {
+        socket.emit("error", { message: "Unauthorized: No user email provided" });
+        return;
+      }
+
+      // Verify user is authorized to join this room
+      const { chatRoomsCollection } = getCollections();
+      const room = await chatRoomsCollection.findOne({
+        _id: new ObjectId(roomId),
+        participants: userEmail
+      });
+
+      if (!room) {
+        socket.emit("error", { message: "Unauthorized to join this room" });
+        logger.warn(`Socket ${socket.id} unauthorized attempt to join room ${roomId}`);
+        return;
+      }
+
+      socket.join(roomId);
+      logger.info(`Socket ${socket.id} joined room ${roomId} for user ${userEmail}`);
+    } catch (error) {
+      logger.error("Error joining room:", error);
+      socket.emit("error", { message: "Failed to join room" });
+    }
   });
 
-  // Send a message to a room
+  // Send a message to a room (with atomicity guarantee)
   socket.on("send_message", async (data) => {
     try {
       const { roomId, senderEmail, messageText } = data;
@@ -134,13 +159,14 @@ io.on("connection", (socket) => {
       // Save message to database
       const newMessage = await saveMessage(roomId, senderEmail, messageText);
 
-      // Broadcast message to all users in the room
+      // Only broadcast after successful database save
       io.to(roomId).emit("receive_message", newMessage);
 
       logger.info(`Message sent to room ${roomId} by ${senderEmail}`);
     } catch (error) {
       logger.error("Error sending message:", error);
       socket.emit("error", { message: "Failed to send message" });
+      // Do NOT emit receive_message on error - atomicity guaranteed
     }
   });
 

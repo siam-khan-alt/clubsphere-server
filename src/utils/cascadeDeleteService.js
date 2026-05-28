@@ -21,6 +21,8 @@ const deleteClubCascade = async (clubId, session = null) => {
     eventRegistrationsCollection,
     notificationsCollection,
     paymentsCollection,
+    chatRoomsCollection,
+    messagesCollection,
   } = getCollections();
 
   try {
@@ -83,17 +85,28 @@ const deleteClubCascade = async (clubId, session = null) => {
     // Delete notifications
     await notificationsCollection.deleteMany({ clubId: clubId }, { session });
 
+    // Delete club's group chat room
+    await chatRoomsCollection.deleteMany({ clubId: clubId }, { session });
+
+    // Delete all messages from club's chat room
+    const rooms = await chatRoomsCollection.find({ clubId: clubId }, { projection: { _id: 1 } }).toArray();
+    const roomIds = rooms.map((r) => r._id);
+    if (roomIds.length > 0) {
+      await messagesCollection.deleteMany({ roomId: { $in: roomIds } }, { session });
+    }
+
     // Delete the club
     const result = await clubsCollection.deleteOne(
       { _id: new ObjectId(clubId) },
       { session }
     );
 
-    logger.info(`Cascade deleted club ${clubId} and all related records`);
+    logger.info(`Cascade deleted club ${clubId} and all related records including chat data`);
     return {
       success: true,
       deletedCount: result.deletedCount,
       eventsDeleted: eventIds.length,
+      chatRoomsDeleted: roomIds.length,
     };
   } catch (error) {
     logger.error(`Error in cascade delete club ${clubId}:`, error);
@@ -116,6 +129,8 @@ const deleteUserCascade = async (userEmail, session = null) => {
     referralsCollection,
     userAchievementsCollection,
     notificationsCollection,
+    chatRoomsCollection,
+    messagesCollection,
   } = getCollections();
 
   try {
@@ -172,13 +187,26 @@ const deleteUserCascade = async (userEmail, session = null) => {
     // Delete notifications
     await notificationsCollection.deleteMany({ userEmail: userEmail }, { session });
 
+    // Remove user from all chat room participants
+    await chatRoomsCollection.updateMany(
+      { participants: userEmail },
+      { $pull: { participants: userEmail } },
+      { session }
+    );
+
+    // Delete direct message rooms where user was the only participant
+    await chatRoomsCollection.deleteMany(
+      { type: "direct", participants: { $size: 1, $in: [userEmail] } },
+      { session }
+    );
+
     // Delete the user
     const result = await usersCollection.deleteOne(
       { email: userEmail },
       { session }
     );
 
-    logger.info(`Cascade deleted user ${userEmail} and all related records`);
+    logger.info(`Cascade deleted user ${userEmail} and all related records including chat data`);
     return {
       success: true,
       deletedCount: result.deletedCount,

@@ -270,6 +270,34 @@ const chatSchemas = {
 };
 
 /**
+ * Notification-related validation schemas
+ */
+const notificationSchemas = {
+  markAsRead: z.object({
+    params: z.object({
+      notificationId: z.string().min(1, "Notification ID is required"),
+    }),
+  }),
+
+  deleteNotification: z.object({
+    params: z.object({
+      notificationId: z.string().min(1, "Notification ID is required"),
+    }),
+  }),
+};
+
+/**
+ * Achievement-related validation schemas
+ */
+const achievementSchemas = {
+  getAchievementById: z.object({
+    params: z.object({
+      id: z.string().min(1, "Achievement ID is required"),
+    }),
+  }),
+};
+
+/**
  * Query validation schemas
  */
 const querySchemas = {
@@ -318,5 +346,7 @@ module.exports = {
   subscriptionSchemas,
   referralSchemas,
   chatSchemas,
+  notificationSchemas,
+  achievementSchemas,
   querySchemas,
 };
