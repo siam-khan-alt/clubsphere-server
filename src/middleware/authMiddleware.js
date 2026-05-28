@@ -17,7 +17,7 @@ const verifyToken = async (req, res, next) => {
     req.tokenEmail = decoded.email;
     next();
   } catch (err) {
-    return res.status(401).send({ message: "Unauthorized Access!", err });
+    return res.status(401).send({ message: "Unauthorized Access!" });
   }
 };
 

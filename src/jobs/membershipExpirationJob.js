@@ -1,5 +1,5 @@
 const cron = require("node-cron");
-const { getCollections } = require("../config");
+const { getCollections, startSession } = require("../config");
 const logger = require("../config/logger");
 const { notifyMembershipExpiration } = require("../controllers/notificationController");
 const emailService = require("../utils/emailService");
@@ -133,17 +133,27 @@ const checkExpiringMemberships = async () => {
         });
 
         if (club) {
-          // Update membership status to expired
-          await membershipsCollection.updateOne(
-            { _id: membership._id },
-            { $set: { status: "expired", updatedAt: new Date() } }
-          );
+          // Wrap membership status update and club members array removal in transaction
+          const dbSession = await startSession();
+          try {
+            await dbSession.withTransaction(async () => {
+              // Update membership status to expired
+              await membershipsCollection.updateOne(
+                { _id: membership._id },
+                { $set: { status: "expired", updatedAt: new Date() } },
+                { session: dbSession }
+              );
 
-          // Remove user from club's members array to maintain data consistency
-          await clubsCollection.updateOne(
-            { _id: membership.clubId },
-            { $pull: { members: membership.userEmail } }
-          );
+              // Remove user from club's members array to maintain data consistency
+              await clubsCollection.updateOne(
+                { _id: membership.clubId },
+                { $pull: { members: membership.userEmail } },
+                { session: dbSession }
+              );
+            });
+          } finally {
+            await dbSession.endSession();
+          }
 
           // Send notification
           await notifyMembershipExpiration(

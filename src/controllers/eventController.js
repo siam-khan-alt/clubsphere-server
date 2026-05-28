@@ -608,7 +608,7 @@ const downloadEventCalendar = async (req, res) => {
     const eventData = {
       title: event.title,
       description: event.description,
-      date: event.date,
+      date: event.eventDate,
       location: event.location,
       clubName: club.clubName,
     };

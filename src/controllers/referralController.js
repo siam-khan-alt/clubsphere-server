@@ -28,17 +28,24 @@ const getReferralCode = async (req, res) => {
 
     if (!referral) {
       const code = generateReferralCode();
-      referral = {
-        inviterEmail: userEmail,
-        referralCode: code,
-        invitedUsers: [],
-        totalReferrals: 0,
-        successfulReferrals: 0,
-        creditsEarned: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      await referralsCollection.insertOne(referral);
+      // Use atomic findOneAndUpdate with upsert to prevent race condition
+      const result = await referralsCollection.findOneAndUpdate(
+        { inviterEmail: userEmail },
+        {
+          $setOnInsert: {
+            inviterEmail: userEmail,
+            referralCode: code,
+            invitedUsers: [],
+            totalReferrals: 0,
+            successfulReferrals: 0,
+            creditsEarned: 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }
+        },
+        { upsert: true, returnDocument: 'after' }
+      );
+      referral = result;
     }
 
     res.send({

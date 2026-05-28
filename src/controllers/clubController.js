@@ -507,17 +507,26 @@ const joinClub = async (req, res) => {
       subscriptionStatus: club.subscriptionStatus || "inactive",
       subscriptionExpiresAt: club.subscriptionExpiresAt || null,
     };
-    await membershipsCollection.insertOne(newMembership);
 
-    const updateResult = await clubsCollection.updateOne(
-      { _id: new ObjectId(clubId), status: "approved" },
-      { $addToSet: { members: userEmail } }
-    );
+    const dbSession = await startSession();
+    try {
+      await dbSession.withTransaction(async () => {
+        await membershipsCollection.insertOne(newMembership, { session: dbSession });
 
-    if (updateResult.modifiedCount === 0) {
-      logger.warn(
-        `Club ${clubId} members array was likely already updated for ${userEmail}.`
-      );
+        const updateResult = await clubsCollection.updateOne(
+          { _id: new ObjectId(clubId), status: "approved" },
+          { $addToSet: { members: userEmail } },
+          { session: dbSession }
+        );
+
+        if (updateResult.modifiedCount === 0) {
+          logger.warn(
+            `Club ${clubId} members array was likely already updated for ${userEmail}.`
+          );
+        }
+      });
+    } finally {
+      await dbSession.endSession();
     }
 
     // Add user to club's group chat room

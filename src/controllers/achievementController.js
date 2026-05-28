@@ -182,7 +182,7 @@ const checkAndAwardAchievements = async (userEmail) => {
       const userValue = userStats[condition.field] || 0;
 
       if (userValue >= condition.value) {
-        // Award achievement
+        // Award achievement atomically to prevent duplicates
         const userAchievement = {
           userEmail: userEmail,
           achievementId: achievement.id,
@@ -194,7 +194,11 @@ const checkAndAwardAchievements = async (userEmail) => {
           earnedAt: new Date(),
         };
 
-        await userAchievementsCollection.insertOne(userAchievement);
+        await userAchievementsCollection.findOneAndUpdate(
+          { userEmail: userEmail, achievementId: achievement.id },
+          { $setOnInsert: userAchievement },
+          { upsert: true }
+        );
         newAchievements.push(userAchievement);
         logger.info(`Awarded achievement "${achievement.name}" to ${userEmail}`);
       }

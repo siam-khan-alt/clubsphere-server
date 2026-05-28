@@ -36,14 +36,15 @@ const deleteClubCascade = async (clubId, session = null) => {
       throw new Error("Club not found");
     }
 
-    // Cancel Stripe subscription if exists
+    // Cancel Stripe subscription if exists - do this first to ensure billing consistency
     if (club.stripeSubscriptionId) {
       try {
         await stripe.subscriptions.cancel(club.stripeSubscriptionId);
         logger.info(`Cancelled Stripe subscription ${club.stripeSubscriptionId} for club ${clubId}`);
       } catch (stripeError) {
         logger.error(`Failed to cancel Stripe subscription for club ${clubId}:`, stripeError);
-        // Continue with deletion even if Stripe cancellation fails
+        // Abort deletion if Stripe cancellation fails to prevent billing inconsistencies
+        throw new Error("Cannot delete club: Stripe subscription cancellation failed");
       }
     }
 

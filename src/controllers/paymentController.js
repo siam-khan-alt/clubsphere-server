@@ -143,6 +143,17 @@ const handleStripeWebhook = async (req, res) => {
               );
             }
 
+            // Check for existing payment to prevent duplicates on webhook retry
+            const existingPayment = await paymentsCollection.findOne(
+              { paymentId: session.payment_intent },
+              { session: dbSession }
+            );
+
+            if (existingPayment) {
+              logger.info(`Payment ${session.payment_intent} already processed, skipping`);
+              return;
+            }
+
             const paymentRecord = {
               userEmail: userEmail,
               clubId: clubId,
@@ -198,6 +209,17 @@ const handleStripeWebhook = async (req, res) => {
                 { $inc: { registrationCount: 1 } },
                 { session: dbSession }
               );
+            }
+
+            // Check for existing payment to prevent duplicates on webhook retry
+            const existingPayment = await paymentsCollection.findOne(
+              { paymentId: session.payment_intent },
+              { session: dbSession }
+            );
+
+            if (existingPayment) {
+              logger.info(`Payment ${session.payment_intent} already processed, skipping`);
+              return;
             }
 
             const paymentRecord = {

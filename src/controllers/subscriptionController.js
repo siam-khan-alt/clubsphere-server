@@ -97,9 +97,9 @@ const handleSubscriptionSuccess = async (req, res) => {
 
     const { clubId, planId } = session.metadata;
 
-    // Calculate subscription expiration (30 days from now)
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
+    // Get actual subscription period from Stripe
+    const subscription = await stripe.subscriptions.retrieve(session.subscription);
+    const expiresAt = new Date(subscription.current_period_end * 1000);
 
     const dbSession = await startSession();
     try {
