@@ -8,6 +8,7 @@ const {
   checkEventRegistrationStatus,
   getMemberEvents,
   downloadEventCalendar,
+  cancelEventRegistration,
 } = require("../controllers/eventController");
 const { verifyToken, verifyMember } = require("../middleware/authMiddleware");
 const validateRequest = require("../middleware/validateRequest");
@@ -21,6 +22,7 @@ router.get("/member/events", verifyToken, verifyMember, getMemberEvents);
 router.get("/member/event-registration-status/:eventId", verifyToken, verifyMember, validateRequest(eventSchemas.getEventById), checkEventRegistrationStatus);
 router.post("/event-payment/create-checkout-session", verifyToken, verifyMember, validateRequest(eventSchemas.createEventPayment), createEventPaymentSession);
 router.post("/events/register/:eventId", verifyToken, verifyMember, validateRequest(eventSchemas.registerForEvent), registerForEvent);
+router.delete("/cancel-registration/:id", verifyToken, verifyMember, cancelEventRegistration);
 
 // Calendar download (must be before dynamic :id)
 router.get("/:id/calendar", validateRequest(eventSchemas.getEventById), downloadEventCalendar);

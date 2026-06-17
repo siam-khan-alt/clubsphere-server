@@ -49,7 +49,7 @@ router.post("/:id/comments/:commentId/react", verifyToken, reactionRateLimit, va
 router.patch("/:id/comments/:commentId", verifyToken, validateRequest(clubSchemas.editClubComment), editClubComment);
 router.delete("/:id/comments/:commentId", verifyToken, validateRequest(clubSchemas.deleteClubComment), deleteClubComment);
 
-// Club Wars routes
+// Club Wars routes (must be before dynamic :id route)
 router.get("/club-wars/current-season", getCurrentSeason);
 
 // Proposal routes

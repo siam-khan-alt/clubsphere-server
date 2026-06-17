@@ -3,6 +3,7 @@ const { getCollections, getFirebaseAdmin, startSession } = require("../config");
 const logger = require("../config/logger");
 const emailService = require("../utils/emailService");
 const { deleteUserCascade } = require("../utils/cascadeDeleteService");
+const { object } = require("zod");
 
 const admin = getFirebaseAdmin();
 
@@ -90,6 +91,12 @@ const googleLogin = async (req, res) => {
 const updateUser = async (req, res) => {
   try {
     const { email, name, photoURL } = req.body;
+    const requireFields={ email, name, photoURL }
+    for(const [field, value] of Object.entries(requireFields)){
+      if(!value){
+        return res.status(400).send({massage: `${field} is required`})
+      }
+    }
     const { usersCollection } = getCollections();
     const filter = { email: email };
     const updatedDoc = {
@@ -194,6 +201,7 @@ const updateUserRole = async (req, res) => {
  */
 const deleteUser = async (req, res) => {
   const { email } = req.params;
+  const {usersCollection}=getCollections()
 
   try {
     const userToDelete = await usersCollection.findOne({ email });

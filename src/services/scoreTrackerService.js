@@ -1,5 +1,5 @@
 const { getCollections } = require("../config/database");
-const logger = require("../utils/logger");
+const logger = require("../config/logger");
 const { getSocketIo } = require("../utils/socket");
 const { ObjectId } = require("mongodb");
 

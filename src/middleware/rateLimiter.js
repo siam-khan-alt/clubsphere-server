@@ -17,12 +17,12 @@ const generalLimiter = rateLimit({
 
 /**
  * Rate limiter for authentication routes
- * Stricter limit to prevent brute force attacks
- * 5 requests per 15 minutes per IP
+ * Relaxed limit for portfolio/demo testing
+ * 100 requests per 15 minutes per IP
  */
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 requests per windowMs
+  max: 100, // Increased from 5 to 100 for smooth portfolio testing
   message: {
     success: false,
     message: "Too many authentication attempts, please try again later.",

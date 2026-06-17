@@ -634,6 +634,58 @@ const downloadEventCalendar = async (req, res) => {
   }
 };
 
+/**
+ * Cancel event registration (member only)
+ */
+const cancelEventRegistration = async (req, res) => {
+  const eventId = req.params.id;
+  const userEmail = req.tokenEmail;
+  const { eventsCollection, eventRegistrationsCollection } = getCollections();
+
+  if (!ObjectId.isValid(eventId)) {
+    return res.status(400).send({ message: "Invalid Event ID." });
+  }
+
+  try {
+    const event = await eventsCollection.findOne({
+      _id: new ObjectId(eventId),
+    });
+
+    if (!event) {
+      return res.status(404).send({ message: "Event not found." });
+    }
+
+    const registration = await eventRegistrationsCollection.findOne({
+      eventId: eventId,
+      userEmail: userEmail,
+      status: "registered",
+    });
+
+    if (!registration) {
+      return res.status(400).send({
+        message: "You are not registered for this event.",
+      });
+    }
+
+    await eventRegistrationsCollection.updateOne(
+      { _id: registration._id },
+      {
+        $set: {
+          status: "cancelled",
+          cancelledAt: new Date(),
+        },
+      }
+    );
+
+    res.status(200).send({ message: "Registration cancelled successfully." });
+  } catch (error) {
+    logger.error("Event registration cancellation failed:", error);
+    res.status(500).send({
+      message: "Failed to cancel registration due to server error.",
+    });
+  }
+};
+
 module.exports = {
   getManagerEvents,
   getEventRegistrations,
@@ -647,4 +699,5 @@ module.exports = {
   checkEventRegistrationStatus,
   getMemberEvents,
   downloadEventCalendar,
+  cancelEventRegistration,
 };

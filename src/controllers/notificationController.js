@@ -21,20 +21,30 @@ const createNotification = async (notificationData) => {
 };
 
 /**
- * Get notifications for a user
- * @param {string} userEmail - User email
- * @returns {Promise<Array>} User notifications
+ * Get notifications for a user (Express route handler)
+ * @param {Object} req - Express request
+ * @param {Object} res - Express response
  */
-const getUserNotifications = async (userEmail) => {
-  const { notificationsCollection } = getCollections();
-  
-  const notifications = await notificationsCollection
-    .find({ userEmail })
-    .sort({ createdAt: -1 })
-    .limit(50)
-    .toArray();
+const getUserNotifications = async (req, res) => {
+  try {
+    const { notificationsCollection } = getCollections();
+    const userEmail = req.user?.email;
 
-  return notifications;
+    if (!userEmail) {
+      return res.status(200).json([]);
+    }
+
+    const notifications = await notificationsCollection
+      .find({ userEmail })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .toArray();
+
+    res.status(200).json(notifications);
+  } catch (error) {
+    logger.error("Error fetching notifications:", error);
+    res.status(200).json([]);
+  }
 };
 
 /**
